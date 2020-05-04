@@ -4,7 +4,7 @@ MATLAB/Octave and C++ implementations of Wideband Audio Waveform Evaluation netw
 This WAWEnets implementation produces one or more speech quality or intelligibility values for each input speech signal without using reference speech signals.
 WAWEnets are convolutional neural networks and they have been trained using full-reference objective speech quality and speech intelligibility values.
 
-Details can be found in [the WAWEnets paper.](https://www.its.bldrdoc.gov/publications/details.aspx?pub=3242)<sup id="wawenets">[1](#f1)</sup>
+Details can be found in <a href="https://www.its.bldrdoc.gov/publications/3242.aspx" target="_blank">the WAWEnets paper.</a><sup id="wawenets">[1](#f1)</sup>
 
 If you need to cite our work, please use the following:
 
@@ -21,7 +21,7 @@ If you need to cite our work, please use the following:
 }
 ```
 
-## MATLAB/Octave implementation
+## MATLAB®/Octave implementation
 Instructions for using the MATLAB/Octive implementation are found [here](matlab/readme.md).
 
 ## C++ Implementation

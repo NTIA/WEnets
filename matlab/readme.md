@@ -1,10 +1,10 @@
-# WAWEnets Matlab Code
+# WAWEnets MATLAB® Code
 Implements Wideband Audio Waveform Evaluation networks or WAWEnets.
 
 This WAWEnets implementation produces one or more speech quality or intelligibility values for each input speech signal without using reference speech signals.
 WAWEnets are convolutional neural networks and they have been trained using full-reference objective speech quality and speech intelligibility values.
 
-Details can be found in [the WAWEnets paper.](https://www.its.bldrdoc.gov/publications/details.aspx?pub=3242)<sup id="wawenets">[1](#f1)</sup>
+Details can be found in <a href="https://www.its.bldrdoc.gov/publications/3242.aspx" target="_blank">the WAWEnets paper.</a>)<sup id="wawenets">[1](#f1)</sup>
 
 If you need to cite our work, please use the following:
 
@@ -23,16 +23,16 @@ If you need to cite our work, please use the following:
 
 # How to run
 * Clone to local repository  
-* Open using Matlab or Octave  
+* Open using MATLAB or Octave  
 * Run WAWEnet.m.
 
 Many example calls and results are provided in `demo.m`.
 
 Input can be a vector of speech samples, the name of a `.wav` file, or the name of a text file containing a list of `.wav` files.
 
-Results are shown in the Matlab command window, are returned in a structure, and can also be logged into an optional output text file.
+Results are shown in the MATLAB command window, are returned in a structure, and can also be logged into an optional output text file.
 
-Further details below (or type `help WAWEnet` in the Matlab command window).
+Further details below (or type `help WAWEnet` in the MATLAB command window).
 
 # Usage
 
@@ -81,7 +81,7 @@ If `inSpeech` is string that names a `.txt` file, each line should specify a `.w
 
 The output for each of the N speech signals processed is in the 1 by N structure `allFileInfo`. The fields are:
 
-- `allFileInfo.name`, `.wav` filename or "MatlabVector"
+- `allFileInfo.name`, `.wav` filename or "MATLABVector"
 - `allFileInfo.exception`, description of any exception encountered
 - `allFileInfo.sampleRate`, native sample rate of the signal
 - `allFileInfo.duration`, duration of the signal in seconds
