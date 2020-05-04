@@ -1,0 +1,10 @@
+../speech/T000053_Q159_D401.wav
+../speech/T000093_Q446_D401.wav
+../speech/T000342_Q125_D401.wav
+../speech/T000439_Q231_D401.wav
+../speech/T000493_Q415_D401.wav
+../speech/T000863_Q316_D401.wav
+../speech/T000937_Q340_D401.wav
+../speech/T001002_Q366_D401.wav
+../speech/T001121_Q269_D401.wav
+../speech/T001189_Q200_D401.wav
