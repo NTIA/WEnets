@@ -45,10 +45,11 @@ This implementation depends on the Pytorch® C++ library and was built using Vis
     - c10.dll
     - caffe2_nvrtc.dll
     - torch_cpu.dll
-7. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
+7. Copy the following `.dll` files  
+8. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
 8. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
-9. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
-10. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
+10. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
+11. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
 
 # Usage
 
@@ -89,7 +90,7 @@ To best match the designed scope of WAWEnets, the `.wav` file should have a spee
 
 ## Outputs
 
-The output for each of the N speech signals processed the in the format:
+The output for each of the N speech signals processed is in the format:
 
 ```
 [wavfile] [channel] [sample_rate] [duration] [active_level] [speech_activity] [level_normalization] [segment_step_size] [WAWEnet_mode] [model_prediction]
