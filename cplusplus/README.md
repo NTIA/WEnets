@@ -89,7 +89,7 @@ To best match the designed scope of WAWEnets, the `.wav` file should have a spee
 
 ## Outputs
 
-The output for each of the N speech signals processed is in the in the format:
+The output for each of the N speech signals processed the in the format:
 
 ```
 [wavfile] [channel] [sample_rate] [duration] [active_level] [speech_activity] [level_normalization] [segment_step_size] [WAWEnet_mode] [model_prediction]
