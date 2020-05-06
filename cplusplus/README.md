@@ -24,7 +24,7 @@ If you need to cite our work, please use the following:
 
 # Setup
 
-This implementation depends on the Pytorch® C++ library and was built using [¿Visual Studio® vX.X?] on Windows. The following steps are required to build the project:
+This implementation depends on the Pytorch® C++ library and was built using Visual Studio® on Windows. The following steps are required to build the project:
 
 1. Download the [Pytorch C++ Library](https://pytorch.org/get-started/locally/) by selecting `stable`, `Windows`, `LibTorch`, `C++/Java` and `10.2` and then clicking the provided download link.
 2. Extract the downloaded `.zip` file to a directory on your computer.
