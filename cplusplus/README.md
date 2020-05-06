@@ -45,7 +45,6 @@ This implementation depends on the Pytorch® C++ library and was built using Vis
     - c10.dll
     - caffe2_nvrtc.dll
     - torch_cpu.dll
-7. Copy the following `.dll` files  
 8. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
 8. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
 10. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
