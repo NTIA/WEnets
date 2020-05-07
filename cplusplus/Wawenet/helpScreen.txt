@@ -1,0 +1,62 @@
+Usage: wawenet infile [options]
+
+--infile is either a .wav file or a .txt file where each line specifies
+a suitable .wav file (In this second case, the listed .wav files will be
+processed in sequence).
+
+A suitable wav file: 
+   is uncompressed
+   has sample rate 8, 16, 24, 32, or 48k 
+   contains at least 3 seconds of speech
+To best match the designed scope of WAWEnets, it should also have at 
+least .50 speech activity factor and an active speech level near
+26 dB below clipping (see level normalization feature below).
+The native sample rate for WAWEnets is 16k so files with rates 8, 24, 32,
+or 48k rate will be converted internally before processing.
+
+-- use option -m M to specify a WAWEnet mode. The integer M
+specifies the WAWEnet trained using a specific full-reference target.
+M=1: WAWEnet trained using WB-PESQ [2] target values (Default)
+M=2: WAWEnet trained using POLQA [3] target values
+M=3: WAWEnet trained using PEMO [4] target values
+M=4: WAWEnet trained using STOI [5] target values
+
+-- use option -l L to specify internal level normalization of 
+.wav file contents to 26 dB below clipping.
+L=0: normalization off
+L=1: normalization on (Default)
+
+-- use option -s S to specify segment step (stride).
+WAWEnet requires a full 3 seconds of signal to generate a result. 
+If a .wav file is longer than 3 seconds multiple results may be produced.
+S specifies the number of samples to move ahead in the file when
+extracting the next segment. The default value of S is 48,000. This gives
+zero overlap between segments and any speech file less than 6 sec.
+will produce one result, based on just the first 3 sec. A 6 sec.
+speech file will produce two results.
+If S = 24,000 for example, segment overlap will be 50%, a 4.5 sec.
+file will produce 2 results and a 6 sec. file will produce 3 results.
+
+-- use option -c C to specify a channel number to use in the 
+case of multi-channel .wav files. Default is C = 1.
+
+-- use option -o 'myFile.txt' to specify a text file that
+captures WAWEnet results for each processed .wav file on a new line.
+If the file exists it will be appended. The extension .txt will be added
+as needed. Default is no .txt file generated.
+
+References:
+[1] A. A. Catellier and S.D. Voran, “WAWEnets: A No-Reference 
+Convolutional Waveform-Based Approach to Estimating Narrowband and 
+Wideband Speech Quality,” in Proc. 45th IEEE International Conference
+on Acoustics, Speech and Signal Processing, May 2020.
+[2] ITU-T Recommendation P.862, “Perceptual evaluation of speech quality
+(PESQ),” Geneva, 2001.
+[3] ITU-T Recommendation P.863, “Perceptual objective listening quality
+analysis,” Geneva, 2018.
+[4] R. Huber and B. Kollmeier, “PEMO-Q – A new method for objective audio
+quality assessment using a model of auditory perception,” IEEE Trans.
+ASLP, vol. 14, no. 6, pp. 1902–1911, Nov. 2006.
+[5] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “An algorithm
+for intelligibility prediction of time–frequency weighted noisy speech,”
+IEEE Trans. ASLP, vol. 19, no. 7, pp. 2125–2136, Sep. 2011.
