@@ -26,29 +26,26 @@ If you need to cite our work, please use the following:
 
 This implementation depends on the Pytorch® C++ library and was built using Visual Studio® on Windows. The following steps are required to build the project:
 
-1. Download the [Pytorch C++ Library](https://pytorch.org/get-started/locally/) by selecting `stable`, `Windows`, `LibTorch`, `C++/Java` and `10.2` and then clicking the provided download link.
+1. Download the [Pytorch C++ Library](https://pytorch.org/get-started/locally/) by selecting `stable`, `Windows`, `LibTorch`, `C++/Java` and `10.2` and then clicking the provided download link under 'Release'.
 2. Extract the downloaded `.zip` file to a directory on your computer.
-3. Add `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\` to your `PATH` enviroment variables where `$PATH_TO_LIBTORCH` is the directory where you unzipped the library.
+3. Add `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\lib` to your `PATH` enviroment variables where `$PATH_TO_LIBTORCH` is the directory where you unzipped the library.
 4. Open the `wawenet` project in Visual Studio.
 5. In the Visual Studio Project properties, set the following options:
     - VC++ Directories->Include Directories-> `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\include`
     - VC++ Directories->Library Directories-> `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\lib`
     - C/C++ -> General -> Additional Include Directories -> `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\include`
-    - Linker->General-> Additional Library Directories -> `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\lib`
+    - Linker -> General -> Additional Library Directories -> `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\lib`
     - Linker->Input>Additional Dependencies->
         - torch.lib
         - c10.lib
         - caffe2_nvrtc.lib
         - torch_cpu.lib
-6. Copy these `.dll` files from `$PATH_TO_LIBTORCH\libtorch-win-shared-with-deps-1.5.0\libtorch\lib` to the `Release` directory (where the .exe lives)
-    - torch.dll
-    - c10.dll
-    - caffe2_nvrtc.dll
-    - torch_cpu.dll
-8. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
-8. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
-10. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
-11. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
+6. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
+7. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
+8. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
+9. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
+10. The .exe will be located in `cplusplus/x64/Release` after you build in Visual Studio
+11. You can run the .exe wherever on your machine as long as the helpScreen.txt and .pt files are in the same directory
 
 # Usage
 
