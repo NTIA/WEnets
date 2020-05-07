@@ -44,6 +44,8 @@ This implementation depends on the Pytorch® C++ library and was built using Vis
 7. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
 8. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
 9. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
+10. The .exe will be located in cplusplus/x64/Release after you build in Visual Studio
+11. You can run the .exe wherever on your machine as long as the helpScreen.txt and .pt files are in the same directory
 
 # Usage
 
