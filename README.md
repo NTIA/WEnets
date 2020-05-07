@@ -22,10 +22,10 @@ If you need to cite our work, please use the following:
 ```
 
 ## MATLAB/Octave implementation
-Instructions for using the MATLAB/Octive implementation are found [here](matlab/readme.md).
+Instructions for using the MATLAB/Octave implementation are found [here](matlab/readme.md).
 
 ## C++ Implementation
-A C++ implementation will be available soon.
+Instructions for building and using the C++ implementation are found [here](cplusplus/readme.md).
 
 -------------------------------------
 <b id="f1">1</b> Andrew A. Catellier & Stephen D. Voran, "WAWEnets: A No-Reference Convolutional Waveform-Based Approach to Estimating Narrowband and Wideband Speech Quality," ICASSP 2020 - 2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Barcelona, Spain, 2020, pp. 331-335. [↩](#wawenets)
