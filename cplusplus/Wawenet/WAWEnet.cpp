@@ -722,12 +722,11 @@ vector<string> processInFile(string fName) {
             cerr << "txt file does not exist" << '\n';
             throw std::exception("file not found exception");
         }
-        vector<string> inFileListT;
 
         while (getline(infile,wavFiles)) 
         {
             toVect = wavFiles;
-            inFileListT.push_back(toVect);
+            inFileList.push_back(toVect);
         }
         infile.close();
 
@@ -736,7 +735,7 @@ vector<string> processInFile(string fName) {
             throw std::exception("empty file list");
         }
 
-        return inFileListT;
+        return inFileList;
 
     }
 }
