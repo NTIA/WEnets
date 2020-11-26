@@ -48,8 +48,8 @@ def load_wavs(paths):
 
 
 sample_paths = [
-    Path("/home/Deep_Learner/data/Speech/401/T000053_Q159_D401.wav"),
-    Path("/home/Deep_Learner/data/Speech/401/T000093_Q446_D401.wav"),
+    Path("/path/to/T000053_Q159_D401.wav"),
+    Path("/path/to/T000093_Q446_D401.wav"),
 ]
 
 samples = load_wavs(sample_paths)
@@ -58,7 +58,7 @@ samples = load_wavs(sample_paths)
 min_val, max_val = 1.01, 4.64
 
 # load the model weight and set up the inference session
-weights_path = "/home/Deep_Learner/work/speech_learning/wb_results/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_onnx_eval.onnx"
+weights_path = "/path/to/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_onnx_eval.onnx"
 onnx_model = onnx.load(weights_path)
 inf_session = backend.prepare(onnx_model)
 
