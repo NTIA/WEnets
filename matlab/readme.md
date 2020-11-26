@@ -48,7 +48,7 @@ If `inSpeech` is a vector of speech samples the sample rate must be 16,000 smp/s
 
 To best match the designed scope of WAWEnets, it should have a speech activity factor of roughly 0.5 or greater and an active speech level near 26 dB below the clipping points of +/- 1.0.  (See level normalization feature below.)
 
-If `inSpeech` is string that names a `.wav` file, that `.wav` file must:
+If `inSpeech` is a string that names a `.wav` file, that `.wav` file must:
 
 - be uncompressed
 - have sample rate 8, 16, 24, 32, or 48k smp/sec.
@@ -56,7 +56,7 @@ If `inSpeech` is string that names a `.wav` file, that `.wav` file must:
 
 To best match the designed scope of WAWEnets, the `.wav` file should have a speech activity factor of roughly 0.5 or greater and an active speech level near 26 dB below the clipping points of +/- 1.0.  (See level normalization feature below.) The native sample rate for WAWEnets is 16 k smp/sec so files with rates 8, 24, 32, or 48k rate are converted internally before processing.
 
-If `inSpeech` is string that names a `.txt` file, each line should specify a `.wav` file that meets the `.wav` file requirements listed above. Each file will be processed in sequence. This will be slightly more efficient (1 or 2% reduction in run-time) than calling WAWEnet.m repeatedly. 
+If `inSpeech` is a string that names a `.txt` file, each line should specify a `.wav` file that meets the `.wav` file requirements listed above. Each file will be processed in sequence. This will be slightly more efficient (1 or 2% reduction in run-time) than calling WAWEnet.m repeatedly. 
 
 `ctlInfo` is an optional input. It is a structure that provides control information to `WAWEnet.m`. Any or all of the five different fields may be used in any combination as follows:
 
@@ -71,7 +71,7 @@ If `inSpeech` is string that names a `.txt` file, each line should specify a `.w
 - `L = 0`: normalization off
 - `L = 1`: normalization on (Default)
 
-`ctlInfo.segmentStep = S` specifies the segment step (stride) and is an integer with value 1 or greater.  Default `S = 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If the input speech (vector or `.wav` file) is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the vector or file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 sec. will produce one result, based on just the first 3 sec. A 6 sec. input will produce two results. If `S = 24,000` for example, segment overlap will be 50%, a 4.5 sec. input will produce 2 results and a 6 sec. input will produce 3 results.
+`ctlInfo.segmentStep = S` specifies the segment step (stride) and is an integer with value 1 or greater.  Default is `S = 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If the input speech (vector or `.wav` file) is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the vector or file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 sec. will produce one result, based on just the first 3 sec. A 6 sec. input will produce two results. If `S = 24,000` for example, segment overlap will be 50%, a 4.5 sec. input will produce 2 results and a 6 sec. input will produce 3 results. In all cases an additional final value is produced. That value is the mean of all segment results that are associated with segments that have speech activity factor greater than 0.45. If there are no such segments, the final result is NaN.
 
 `ctlInfo.channel = C` specifies a channel number to use when the input speech is in a multi-channel `.wav` file. Default is `C = 1`.
 
@@ -85,9 +85,11 @@ The output for each of the N speech signals processed is in the 1 by N structure
 - `allFileInfo.exception`, description of any exception encountered
 - `allFileInfo.sampleRate`, native sample rate of the signal
 - `allFileInfo.duration`, duration of the signal in seconds
-- `allFileInfo.activeLevel`, active speech level in dB below overload
-- `allFileInfo.activityFactor`, speech activity factor
-- `allFileInfo.netOut`, output value produced by WAWEnet
+- `allFileInfo.activeLevel`, active speech level of final segment in dB below overload
+- `allFileInfo.activityFactor`, speech activity factor of final segment
+- `allfileInfo.allActivityFactors`, speech activity factors for each segment
+- `allfileInfo.allActiveLevels`, active speech level for each segment
+- `allFileInfo.netOut`, output values produced by WAWEnet.  Contains one value for each segment processed, plus a final value that is the mean over all segments that have speech activity factor greater than 0.45.
 
 `ctlInfo` is returned as well.  In addition to the five fields defined in the input section above, it also includes:
 - `ctlInfo.sampleRate`, native sample rate for WAWEnets, always 16,000 smp/s
