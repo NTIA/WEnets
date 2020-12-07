@@ -42,10 +42,10 @@ float getWAWEnetCNN(vector<float> inSignal, int param) {
         */
 
         std::map<int, string> file;
-        file.insert(pair<int, string>(1, "20200131_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_pytorch_eval.pt"));
-        file.insert(pair<int, string>(2, "20200131_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_final_pytorch_eval.pt"));
-        file.insert(pair<int, string>(3, "20200201_WAWEnetFD13FC96AvgReLU_PEMO_final_pytorch_eval.pt"));
-        file.insert(pair<int, string>(4, "20200201_WAWEnetFD13FC96AvgReLU_STOI_final_pytorch_eval.pt"));
+        file.insert(pair<int, string>(1, "20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_pytorch_eval.pt"));
+        file.insert(pair<int, string>(2, "20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_final_pytorch_eval.pt"));
+        file.insert(pair<int, string>(3, "20200802_WAWEnetFD13FC96AvgReLU_PEMO_final_pytorch_eval.pt"));
+        file.insert(pair<int, string>(4, "20200802_WAWEnetFD13FC96AvgReLU_STOI_final_pytorch_eval.pt"));
 
         // gains and biases required to map from target output range to [-1, 1]
         // based on observed target output range across entire dataset
