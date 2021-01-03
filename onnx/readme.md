@@ -57,8 +57,27 @@ samples = load_wavs(sample_paths)
 # min and max pesq values
 min_val, max_val = 1.01, 4.64
 
-# load the model weight and set up the inference session
+# min and max polqa values
+# min_val, max_val = 1, 4.75
+
+# min and max pemo values
+# min_val, max_val = 0, 1
+
+# min and max stoi values
+# min_val, max_val = 0.45, 1
+
+# load the pesq model weights and set up the inference session
 weights_path = "/path/to/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_onnx_eval.onnx"
+
+# load the pesq model weights and set up the inference session
+# weights_path = "/path/to/20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_final_onnx_eval.onnx"
+
+# load the pesq model weights and set up the inference session
+# weights_path = "/path/to/20200801_WAWEnetFD13FC96AvgReLU_PEMO_final_onnx_eval.onnx"
+
+# load the pesq model weights and set up the inference session
+# weights_path = "/path/to/20200801_WAWEnetFD13FC96AvgReLU_STOI_final_onnx_eval.onnx"
+
 onnx_model = onnx.load(weights_path)
 inf_session = backend.prepare(onnx_model)
 
