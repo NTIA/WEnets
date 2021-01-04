@@ -41,6 +41,18 @@ myInfo.segmentStep = 12000;   %segment step of 12000 gives 75% segment,
 myInfo.channel = 1; %channel 1 of .wav file explicitly selected
 WAWEnet('../speech/long.wav',myInfo);
 %Produces: 1 16000 4.7175 -27.2326 0.92605 0 12000 2 4.4661 4.1569 4.396 4.3397
+
+%% One .wav file, ~10 sec long, with no speech, results to screen, explicit
+% selection of 3 inputs
+clear myInfo
+myInfo.WAWEnetMode = 2;
+myInfo.levelNormalization = 0
+myInfo.segmentStep = 12000;
+WAWEnet('../speech/long_silence.wav', myInfo);
+% Produces: 1 16000 10.0252 -100 0 0 12000 2 2.8323       2.832      2.8308
+% 2.8335       2.834      2.8302
+% 2.829      2.8328      2.8309      2.8323         NaN
+
 %% One .wav file with 2 channels.
 clear myInfo
 myInfo.channel = 1; %channel 1 of .wav file explicitly selected

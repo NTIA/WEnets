@@ -221,6 +221,9 @@ for currentAudioFile = 1:nAudioFiles %loop over all files in list
         %average the outputs over all segments where speech activity factor
         %meets or exceeds threshold and append to the per segment values
         grandMean = mean(netOut(activityThreshold < allActivityFactors));
+        if length(grandMean) == 0
+          grandMean = NaN;
+        end
         netOut = [netOut grandMean];
         fileInfo.netOut = netOut;
         fileInfo.allActivityFactors = allActivityFactors;
