@@ -89,10 +89,16 @@ T sumVector(vector<T>  vect) {
 // calculate the mean of a vector
 template<typename T>
 T meanVector(vector<T> vect) {
-    float sum = 0.0;
     int vectorLength = vect.size();
-    sum = sumVector(vect);
-    float vectorMean = sum / vectorLength;
+    float vectorMean;
+    if (vectorLength < 1) {
+        vectorMean = nanf;
+    }
+    else {
+        float sum = 0.0;
+        sum = sumVector(vect);
+        vectorMean = sum / vectorLength;
+    }
     return vectorMean;
 }
 
@@ -491,7 +497,7 @@ string createOutputString(FileInfo fileInfo, ctlInfo ctl) {
         outString += std::to_string(f.netOut.at(0));
     }
     outString += " ";
-    outString += std::to_string(f.grandMean)
+    outString += std::to_string(f.grandMean);
 
     return outString;
 }
@@ -1248,8 +1254,8 @@ void WAWEnet(vector<string> fileA) {
                 netOut.push_back(net);
                 fileInfo.allActivityFactors.push_back(normOutput.fileinfo.speechActivityFactor);
                 fileInfo.allActiveLevels.push_back(normOutput.fileinfo.activeLevel);
-                if normOutput.fileinfo.speechActivityFactor > ctl.activityThreshold {
-                    exceedsActivityThreshold.push_back(net)
+                if (normOutput.fileinfo.speechActivityFactor > ctl.activityThreshold) {
+                    exceedsActivityThreshold.push_back(net);
                 }
 
                 // update pointer to first audio sample of the next segment
@@ -1262,7 +1268,7 @@ void WAWEnet(vector<string> fileA) {
 
             // average the outputs over all segments where the speech activity factor
             // meets or exceeds threshold and store it
-            fileInfo.grandMean = meanVector(exceedsActivityThreshold)
+            fileInfo.grandMean = meanVector(exceedsActivityThreshold);
 
             // generate the text to print to the screen
             WaveFileResults = createOutputString(fileInfo, ctl);
