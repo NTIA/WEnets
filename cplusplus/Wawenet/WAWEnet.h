@@ -32,6 +32,7 @@ public:
     string outFileHeader;
     string outFileName;
     int levelNormalization;
+    float activityThreshold;
 };
 class FileInfo {
 public:
@@ -39,10 +40,12 @@ public:
     string exception;
     float duration;
     vector<float> netOut;
+    float grandMean;
     int sampleRate;
     float activeLevel;
     float speechActivityFactor;
-
+    vector<float> allActivityFactors;
+    vector<float> allActiveLevels;
 };
 class AudioInfo {
 public:

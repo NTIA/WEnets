@@ -86,6 +86,16 @@ T sumVector(vector<T>  vect) {
     return retVal;
 }
 
+// calculate the mean of a vector
+template<typename T>
+T meanVector(vector<T> vect) {
+    float sum = 0.0;
+    int vectorLength = vect.size();
+    sum = sumVector(vect);
+    float vectorMean = sum / vectorLength;
+    return vectorMean;
+}
+
 //get a vector from every other nth element with n being val
 template<typename T>
 vector<T> multiSlice(vector<T>  vect, float val) {
@@ -449,7 +459,6 @@ string createOutputString(FileInfo fileInfo, ctlInfo ctl) {
     f = fileInfo;
     c = ctl;
 
-
     outString = "";
     outString += f.name;
     outString += ":  ";
@@ -481,7 +490,8 @@ string createOutputString(FileInfo fileInfo, ctlInfo ctl) {
     else {
         outString += std::to_string(f.netOut.at(0));
     }
-
+    outString += " ";
+    outString += std::to_string(f.grandMean)
 
     return outString;
 }
@@ -1177,6 +1187,7 @@ void WAWEnet(vector<string> fileA) {
 
     ctl = parseVars(slice(fileAndArgs, 1, fileAndArgs.size()), ctl);
     ctl.segLength = 48000;
+    ctl.activityThreshold = 0.45;
 
 
 
@@ -1218,6 +1229,7 @@ void WAWEnet(vector<string> fileA) {
             int nSegments = floor((nAudioSamples - ctl.segLength) / ctl.segStep) + 1;      
 
             vector<float> netOut;
+            vector<float> exceedsActivityThreshold;
             vector<float> currentAudioSamples;
             audioNormalizeOutput normOutput;
             vector<float> normalizedInput;
@@ -1232,12 +1244,27 @@ void WAWEnet(vector<string> fileA) {
                 normalizedInput = normOutput.outSamples;
                 float net = getWAWEnetCNN(normalizedInput, ctl.WAWEnetMode);
                
+                // store results
                 netOut.push_back(net);
+                fileInfo.allActivityFactors.push_back(normOutput.fileinfo.speechActivityFactor);
+                fileInfo.allActiveLevels.push_back(normOutput.fileinfo.activeLevel);
+                if normOutput.fileinfo.speechActivityFactor > ctl.activityThreshold {
+                    exceedsActivityThreshold.push_back(net)
+                }
+
+                // update pointer to first audio sample of the next segment
                 firstSample = firstSample + ctl.segStep;
             }
+            // hmmm, this only stores the SAF and active level for the last speech segment :(
             fileInfo.speechActivityFactor = normOutput.fileinfo.speechActivityFactor;
             fileInfo.activeLevel = normOutput.fileinfo.activeLevel;
             fileInfo.netOut = netOut;
+
+            // average the outputs over all segments where the speech activity factor
+            // meets or exceeds threshold and store it
+            fileInfo.grandMean = meanVector(exceedsActivityThreshold)
+
+            // generate the text to print to the screen
             WaveFileResults = createOutputString(fileInfo, ctl);
 
         }
