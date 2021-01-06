@@ -92,7 +92,7 @@ T meanVector(vector<T> vect) {
     int vectorLength = vect.size();
     float vectorMean;
     if (vectorLength < 1) {
-        vectorMean = nanf;
+        vectorMean = nanf("");
     }
     else {
         float sum = 0.0;
@@ -494,7 +494,9 @@ string createOutputString(FileInfo fileInfo, ctlInfo ctl) {
         outString += array;
     }
     else {
+        outString += "[ ";
         outString += std::to_string(f.netOut.at(0));
+        outString += " ]";
     }
     outString += " ";
     outString += std::to_string(f.grandMean);
