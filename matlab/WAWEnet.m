@@ -475,7 +475,12 @@ outString = [outString,' ',num2str(fileInfo.activityFactor)];
 outString = [outString,' ',num2str(ctlInfo.levelNormalization)];
 outString = [outString,' ',num2str(ctlInfo.segmentStep)];
 outString = [outString,' ',num2str(ctlInfo.WAWEnetMode)];
-outString = [outString,' ',num2str(fileInfo.netOut),'\n'];
+if length(fileInfo.netOut) > 1
+  outString = [outString, ' [', num2str(fileInfo.netOut(1:end - 1)), ']'];
+  outString = [outString, ' ', num2str(fileInfo.netOut(end)),'\n'];
+else
+  outString = [outString,' ',num2str(fileInfo.netOut),'\n'];
+end
 %--------------------------------------------------------------------------
 
 function outString = makeHeader
