@@ -34,10 +34,10 @@ If the input speech .wav file is longer than 3 seconds
 multiple results may be produced. S specifies the number of samples to
 move ahead in the file when extracting the next segment.
 The default value of 48,000 gives zero overlap between
-segments. Using this default any input less than 6 sec. will produce one
-result, based on just the first 3 sec. A 6 sec. input will produce two
+segments. Using this default any input less than 6 seconds will produce one
+result, based on just the first 3 seconds A 6 second input will produce two
 results. If S = 24,000 for example, segment overlap will be 50%, a 
-4.5 sec. input will produce 2 results and a 6 sec. input will produce
+4.5 second input will produce 2 results and a 6 second input will produce
 3 results. In all cases an additional final value is produced. That 
 value is the mean of all segment results that are associated with 
 segments that have speech activity factor greater than 0.45. If there are
