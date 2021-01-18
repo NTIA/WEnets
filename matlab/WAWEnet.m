@@ -463,10 +463,11 @@ function outString = createOutputString(fileInfo,ctlInfo)
 %Extracts needed results from two structures and build a string of results
 %for output to screen (and file).
 
-%Escape any backslashes in filename so fprintf will display them
-%escFilename = replace(fileInfo.name,'\','\\');
-%outString = [escFilename,':'];
-outString = '';
+%Replace any backslashes in filename so fprintf will display them
+escFilename = fileInfo.name;
+%`replace` not implemented in octave yet.
+escFilename(fileInfo.name == '\') = '/';
+outString = [escFilename,':'];
 outString = [outString,' ',num2str(ctlInfo.channel)];
 outString = [outString,' ',num2str(fileInfo.sampleRate)];
 outString = [outString,' ',num2str(fileInfo.duration)];
