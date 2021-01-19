@@ -1,5 +1,7 @@
 Usage: wawenet infile [options]
 
+INPUTS
+
 --infile is either a .wav file or a .txt file where each line specifies
 a suitable .wav file (In this second case, the listed .wav files will be
 processed in sequence).
@@ -28,14 +30,18 @@ L=1: normalization on (Default)
 
 -- use option -s S to specify segment step (stride).
 WAWEnet requires a full 3 seconds of signal to generate a result. 
-If a .wav file is longer than 3 seconds multiple results may be produced.
-S specifies the number of samples to move ahead in the file when
-extracting the next segment. The default value of S is 48,000. This gives
-zero overlap between segments and any speech file less than 6 sec.
-will produce one result, based on just the first 3 sec. A 6 sec.
-speech file will produce two results.
-If S = 24,000 for example, segment overlap will be 50%, a 4.5 sec.
-file will produce 2 results and a 6 sec. file will produce 3 results.
+If the input speech .wav file is longer than 3 seconds
+multiple results may be produced. S specifies the number of samples to
+move ahead in the file when extracting the next segment.
+The default value of 48,000 gives zero overlap between
+segments. Using this default any input less than 6 seconds will produce one
+result, based on just the first 3 seconds A 6 second input will produce two
+results. If S = 24,000 for example, segment overlap will be 50%, a 
+4.5 second input will produce 2 results and a 6 second input will produce
+3 results. In all cases an additional final value is produced. That 
+value is the mean of all segment results that are associated with 
+segments that have speech activity factor greater than 0.45. If there are
+no such segments, the final result is NaN.
 
 -- use option -c C to specify a channel number to use in the 
 case of multi-channel .wav files. Default is C = 1.
@@ -45,18 +51,40 @@ captures WAWEnet results for each processed .wav file on a new line.
 If the file exists it will be appended. The extension .txt will be added
 as needed. Default is no .txt file generated.
 
+OUTPUTS
+
+The output for each of the N speech signals processed is in the format:
+
+[wavfile] [channel] [sample_rate] [duration] [active_level] [speech_activity]
+    [level_normalization] [segment_step_size] [WAWEnet_mode] [model_prediction]
+
+- wavfile is the filename that has been processed
+- channel is the channel of wavfile that has been processed
+- sample_rate native sample rate of the wavfile
+- duration duration of wavfile in seconds
+- active_level active speech level of the last processed segment of wavfile 
+  in dB below overload
+- speech_activity is the speech activity factor of the last processed segment
+  of wavfile
+- level_normalization reflects whether wavfile was normalized during processing
+- segment_step_size reflects the segment step (stride) used to process wavfile
+- WAWEnet_mode is the mode wavfile has been processed with
+- model_prediction output value (or values, if >1 segment was analyzed) produced
+  by WAWEnet for wavfile, plus a final value that is the mean over all segments
+  that have a speech activity factor greater than 0.45
+
 References:
-[1] A. A. Catellier and S.D. Voran, “WAWEnets: A No-Reference 
+[1] A. A. Catellier and S.D. Voran, "WAWEnets: A No-Reference 
 Convolutional Waveform-Based Approach to Estimating Narrowband and 
-Wideband Speech Quality,” in Proc. 45th IEEE International Conference
+Wideband Speech Quality," in Proc. 45th IEEE International Conference
 on Acoustics, Speech and Signal Processing, May 2020.
-[2] ITU-T Recommendation P.862, “Perceptual evaluation of speech quality
-(PESQ),” Geneva, 2001.
-[3] ITU-T Recommendation P.863, “Perceptual objective listening quality
-analysis,” Geneva, 2018.
-[4] R. Huber and B. Kollmeier, “PEMO-Q – A new method for objective audio
-quality assessment using a model of auditory perception,” IEEE Trans.
-ASLP, vol. 14, no. 6, pp. 1902–1911, Nov. 2006.
-[5] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “An algorithm
-for intelligibility prediction of time–frequency weighted noisy speech,”
-IEEE Trans. ASLP, vol. 19, no. 7, pp. 2125–2136, Sep. 2011.
+[2] ITU-T Recommendation P.862, "Perceptual evaluation of speech quality
+(PESQ)," Geneva, 2001.
+[3] ITU-T Recommendation P.863, "Perceptual objective listening quality
+analysis," Geneva, 2018.
+[4] R. Huber and B. Kollmeier, "PEMO-Q - A new method for objective audio
+quality assessment using a model of auditory perception," IEEE Trans.
+ASLP, vol. 14, no. 6, pp. 1902-1911, Nov. 2006.
+[5] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, "An algorithm
+for intelligibility prediction of time-frequency weighted noisy speech,"
+IEEE Trans. ASLP, vol. 19, no. 7, pp. 2125-2136, Sep. 2011.
