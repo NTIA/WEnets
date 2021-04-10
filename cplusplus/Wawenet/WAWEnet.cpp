@@ -1,4 +1,5 @@
-
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "WAWEnetCNN.h"
 
@@ -202,14 +203,8 @@ vector<string> getInputPair(vector<string> arr,string option) {
 //determines if the windows directory exists
 bool dirExists(const std::string& dirName_in)
 {
-    DWORD ftyp = GetFileAttributesA(dirName_in.c_str());
-    if (ftyp == INVALID_FILE_ATTRIBUTES)
-        return false;  
-
-    if (ftyp & FILE_ATTRIBUTE_DIRECTORY)
-        return true;   
-
-    return false;    
+    struct stat info;
+    return stat( dirName_in.c_str(), &info ) == 0 && info.st_mode & S_IFDIR;
 }
 
 
@@ -552,6 +547,8 @@ Use WAWEnet(infile, '-o', 'myFile.txt') to specify a text file that
 
 */
 
+#define PATH_SEP "/"
+
 
 ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
     int nArgs = vars.size();
@@ -571,7 +568,7 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
      output = getInputPair(vars, "-o");
     if (!output.empty()) {
         string out = output.at(1);
-        if (out.find_last_of("\\") == string::npos) {
+        if (out.find_last_of(PATH_SEP) == string::npos) {
             string file = out;
             if (file.size() >= 5) {
                 if (file.substr(file.size() - 4) == ".txt") {
@@ -587,36 +584,36 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
             }
             else {
                 cerr << "output file, " << file << " is invalid" << endl;
-                throw std::exception("output file is invalid");
+                throw std::runtime_error("output file is invalid");
             }
         }
         else {
-            auto pathpos = out.find_last_of("\\");
+            auto pathpos = out.find_last_of(PATH_SEP);
             string dir = out.substr(0, pathpos);
             string file = out.substr(pathpos + 1, out.length());
             if (dirExists(dir)) {
                 if (file.size() >= 5) {
                     if (file.substr(file.size() - 4) == ".txt") {
-                        ctlI.outFileName = dir + "\\" + file;
+                        ctlI.outFileName = dir + PATH_SEP + file;
                     }
                     else {
                         file += ".txt";
-                        ctlI.outFileName = dir + "\\" + file;
+                        ctlI.outFileName = dir + PATH_SEP + file;
 
                     }
                 }
                 else if (0 < file.size()) {
                     file += ".txt";
-                    ctlI.outFileName = dir + "\\" + file;
+                    ctlI.outFileName = dir + PATH_SEP + file;
                 }
                 else {
                     cerr << "output file, " << file << " is invalid" << endl;
-                    throw std::exception("output file is invalid");
+                    throw std::runtime_error("output file is invalid");
                 }
             }
             else {
                 cerr << "directory " << dir << " does not exist" << endl;
-                throw std::exception("directory does not exist");
+                throw std::runtime_error("directory does not exist");
 
             }
         }
@@ -639,7 +636,7 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
         }
         else {
             cerr << "improper number for wawemode " << stoi(WaweMode.at(1)) <<" , only modes 1-4 accepted" << endl;
-            throw std::exception("Improper number for wawemode");
+            throw std::runtime_error("Improper number for wawemode");
         }
 
     }
@@ -658,7 +655,7 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
         }
         else {
             cerr << "improper number for segStep " << stof(SegmentStep.at(1)) << endl;
-            throw std::exception("Improper number for segStep");
+            throw std::runtime_error("Improper number for segStep");
             
         }
 
@@ -676,7 +673,7 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
         }
         else {
             cerr << "improper number for channel " << stof(channelP.at(1))<< " channel must exist on current waveform" << endl;
-            throw std::exception("Improper number for channel");
+            throw std::runtime_error("Improper number for channel");
             
         }
     }
@@ -694,7 +691,7 @@ ctlInfo parseVars(vector<string> vars, ctlInfo ctl) {
         else {
             cerr << "improper number for level normalization " << stof(levelNorm.at(1)) <<
             "level normalization should be either 1(on) or 0(off)" << endl;
-            throw std::exception("Improper number for level Normalization");
+            throw std::runtime_error("Improper number for level Normalization");
             
         }
 
@@ -722,7 +719,7 @@ vector<string> processInFile(string fName) {
     string last4 = fileName.substr(fileName.size() - 4);
     if (last4 != ".wav" && last4 != ".txt") {
         cerr << "Is not a wav or txt file " << fileName.c_str() << endl;
-        throw std::exception("Invalid file type");
+        throw std::runtime_error("Invalid file type");
         return inFileList;
     }
     else if (last4 == ".wav") {
@@ -738,7 +735,7 @@ vector<string> processInFile(string fName) {
         }
         catch (std::ios_base::failure& e) {
             cerr << "txt file does not exist" << '\n';
-            throw std::exception("file not found exception");
+            throw std::runtime_error("file not found exception");
         }
 
         while (getline(infile,wavFiles)) 
@@ -750,7 +747,7 @@ vector<string> processInFile(string fName) {
 
         if (inFileList.empty()) {
             cerr << "empty file list or file does not exist" << endl;
-            throw std::exception("empty file list");
+            throw std::runtime_error("empty file list");
         }
 
         return inFileList;
@@ -773,7 +770,7 @@ AudioInfo getAudioInfo(FileInfo fileInfo) {
 
     if (!audioFile.load(fileInfo.name)) {
         cerr << "file is not uncompressed" << endl;
-        throw std::exception("file is uncompressed");
+        throw std::runtime_error("file is uncompressed");
     }
 
     audioFile.load(fileInfo.name);
@@ -864,19 +861,19 @@ loadWaveFileInputs loadWaweFile(ctlInfo ctl, FileInfo fInfo) {
 
     if (aInfo.CompressionMethod != "Uncompressed") {
         cerr << "The .wav file needs to be uncompressed " << endl;
-        throw std::exception("File is compressed");
+        throw std::runtime_error("File is compressed");
     }
     else if (aInfo.numChannels < ctlI.channel) {
         cerr << "The file does not contain the requested channel " << endl;
-        throw std::exception("Channel does not exist");
+        throw std::runtime_error("Channel does not exist");
     }
     else if (aInfo.SampleRate != 8000 && aInfo.SampleRate != 16000 && aInfo.SampleRate != 24000 && aInfo.SampleRate != 32000 && aInfo.SampleRate != 48000) {
         cerr << "This .wav file does not have required sample rate 8, 16, 24, 32, or 48k" << endl;
-        throw std::exception("no valid sample rate");
+        throw std::runtime_error("no valid sample rate");
     }
     else if ((aInfo.totalSamples / aInfo.SampleRate) < 3) {
         cerr << "This  .wav file has duration less than 3 seconds" << endl;
-        throw std::exception("file duration is too short");
+        throw std::runtime_error("file duration is too short");
     }
     else {
          aWawe = audioread(fileInfo.name,ctlI);
@@ -908,7 +905,7 @@ loadWaveFileInputs loadWaweFile(ctlInfo ctl, FileInfo fInfo) {
         if (sigCheck == 0) {
 
             cerr << "This .wav file has no signal" << endl;
-            throw std::exception("no signal found");
+            throw std::runtime_error("no signal found");
             
         }
         //sample rate conversions to 16k
@@ -1210,7 +1207,7 @@ void WAWEnet(vector<string> fileA) {
         }
         catch (int e) {
             cerr << "could not open output file, does it exist?" << endl;
-            throw std::exception("file not found");
+            throw std::runtime_error("file not found");
         }
         fprintf(out, ctl.outFileHeader.c_str());
     }
@@ -1278,7 +1275,7 @@ void WAWEnet(vector<string> fileA) {
         }
         else {
             cerr << "fileInfo exception" << endl;
-            throw std::exception("fileInfo exception");
+            throw std::runtime_error("fileInfo exception");
             
         }
         WaveFileResults += "\n";
