@@ -95,15 +95,15 @@ The output for each of the N speech signals processed is in the format:
 where:
 
 - `wavfile` is the filename that has been processed
-- `channel`, is the channel of `wavfile` that has been processed
-- `sample_rate`, native sample rate of the `wavfile`
-- `duration`, duration of `wavfile` in seconds
-- `active_level`, active speech level of the last processed segment of `wavfile` in dB below overload
+- `channel` is the channel of `wavfile` that has been processed
+- `sample_rate` native sample rate of the `wavfile`
+- `duration` duration of `wavfile` in seconds
+- `active_level` active speech level of the last processed segment of `wavfile` in dB below overload
 - `speech_activity` is the speech activity factor of the last processed segment of `wavfile`
 - `level_normalization` reflects whether `wavfile` was normalized during processing
 - `segment_step_size` reflects the segment step (stride) used to process `wavfile`
 - `WAWEnet_mode` is the mode `wavfile` has been processed with
-- `model_prediction`, output value (or values, if >1 segment was analyzed) produced by WAWEnet for `wavfile`
+- `model_prediction` output value (or values, if >1 segment was analyzed) produced by WAWEnet for `wavfile`
 
 -------------------------------------
 <b id="f1">1</b> Andrew A. Catellier & Stephen D. Voran, "WAWEnets: A No-Reference Convolutional Waveform-Based Approach to Estimating Narrowband and Wideband Speech Quality," ICASSP 2020 - 2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Barcelona, Spain, 2020, pp. 331-335. [↩](#wawenets)

@@ -221,6 +221,9 @@ for currentAudioFile = 1:nAudioFiles %loop over all files in list
         %average the outputs over all segments where speech activity factor
         %meets or exceeds threshold and append to the per segment values
         grandMean = mean(netOut(activityThreshold < allActivityFactors));
+        if length(grandMean) == 0
+          grandMean = NaN;
+        end
         netOut = [netOut grandMean];
         fileInfo.netOut = netOut;
         fileInfo.allActivityFactors = allActivityFactors;
@@ -460,10 +463,11 @@ function outString = createOutputString(fileInfo,ctlInfo)
 %Extracts needed results from two structures and build a string of results
 %for output to screen (and file).
 
-%Escape any backslashes in filename so fprintf will display them
-%escFilename = replace(fileInfo.name,'\','\\');
-%outString = [escFilename,':'];
-outString = '';
+%Replace any backslashes in filename so fprintf will display them
+escFilename = fileInfo.name;
+%`replace` not implemented in octave yet.
+escFilename(fileInfo.name == '\') = '/';
+outString = [escFilename,':'];
 outString = [outString,' ',num2str(ctlInfo.channel)];
 outString = [outString,' ',num2str(fileInfo.sampleRate)];
 outString = [outString,' ',num2str(fileInfo.duration)];
@@ -472,7 +476,12 @@ outString = [outString,' ',num2str(fileInfo.activityFactor)];
 outString = [outString,' ',num2str(ctlInfo.levelNormalization)];
 outString = [outString,' ',num2str(ctlInfo.segmentStep)];
 outString = [outString,' ',num2str(ctlInfo.WAWEnetMode)];
-outString = [outString,' ',num2str(fileInfo.netOut),'\n'];
+if length(fileInfo.netOut) > 1
+  outString = [outString, ' [', num2str(fileInfo.netOut(1:end - 1)), ']'];
+  outString = [outString, ' ', num2str(fileInfo.netOut(end)),'\n'];
+else
+  outString = [outString,' ',num2str(fileInfo.netOut),'\n'];
+end
 %--------------------------------------------------------------------------
 
 function outString = makeHeader
