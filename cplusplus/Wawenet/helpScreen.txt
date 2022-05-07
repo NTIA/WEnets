@@ -18,10 +18,17 @@ or 48k rate will be converted internally before processing.
 
 -- use option -m M to specify a WAWEnet mode. The integer M
 specifies the WAWEnet trained using a specific full-reference target.
-M=1: WAWEnet trained using WB-PESQ [2] target values (Default)
+M=1: WAWEnet trained using WB-PESQ [2] target values
 M=2: WAWEnet trained using POLQA [3] target values
 M=3: WAWEnet trained using PEMO [4] target values
 M=4: WAWEnet trained using STOI [5] target values
+M=5: WAWEnet trained using WB-PESQ, POLQA, ViSQOL C310 [6], PEMO, STOI,
+     ESTOI [7], and SIIBGauss [8] target values, simultaneously
+     (Default)
+M=6: WAWEnet trained using overall quality, noisiness, coloration, and
+     discontinuity [9] target values
+M=7: WAWEnet trained using Mean Opinion Score (MOS) target values from
+     the IUB dataset [10]
 
 -- use option -l L to specify internal level normalization of 
 .wav file contents to 26 dB below clipping.
@@ -88,3 +95,8 @@ ASLP, vol. 14, no. 6, pp. 1902-1911, Nov. 2006.
 [5] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, "An algorithm
 for intelligibility prediction of time-frequency weighted noisy speech,"
 IEEE Trans. ASLP, vol. 19, no. 7, pp. 2125-2136, Sep. 2011.
+[6] visqol c310
+[7] estoi
+[8] siibgauss
+[9] nisqa
+[10] IUB

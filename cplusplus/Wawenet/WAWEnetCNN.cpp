@@ -50,11 +50,11 @@ float getWAWEnetCNN(vector<float> inSignal, int param)
 
     // gains and biases required to map from target output range to [-1, 1]
     // based on observed target output range across entire dataset
-    std::map<int, tuple<float, float>> params;
-    params.insert(pair<int, tuple<float, float>>(1, {1.8150, 2.8250})); // PESQ
-    params.insert(pair<int, tuple<float, float>>(2, {1.8750, 2.8750})); // POLQA
-    params.insert(pair<int, tuple<float, float>>(3, {0.5000, 0.5000})); // PEMO
-    params.insert(pair<int, tuple<float, float>>(4, {0.2750, 0.7250})); // STOI
+    std::map<int, tuple<float, float> > params;
+    params.insert(pair<int, tuple<float, float> >(1, {1.8150, 2.8250})); // PESQ
+    params.insert(pair<int, tuple<float, float> >(2, {1.8750, 2.8750})); // POLQA
+    params.insert(pair<int, tuple<float, float> >(3, {0.5000, 0.5000})); // PEMO
+    params.insert(pair<int, tuple<float, float> >(4, {0.2750, 0.7250})); // STOI
 
     targetGain = get<0>(params.at(parameter));
     targetBias = get<1>(params.at(parameter));
