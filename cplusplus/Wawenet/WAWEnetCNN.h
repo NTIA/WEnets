@@ -7,11 +7,8 @@
 #include <string>
 #include <torch/script.h>
 
-
 using namespace std;
 
 float getWAWEnetCNN(vector<float> inVector, int param);
 
-
-                                                                                              
 #endif
