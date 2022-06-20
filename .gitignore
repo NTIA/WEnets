@@ -37,3 +37,6 @@
 
 #macOS
 .DS_Store
+
+# external header fiiles
+AudioFile.h
