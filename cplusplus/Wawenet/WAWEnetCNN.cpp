@@ -47,7 +47,11 @@ float getWAWEnetCNN(vector<float> inSignal, int param)
     file.insert(pair<int, string>(2, "20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_final_pytorch_eval.pt"));
     file.insert(pair<int, string>(3, "20200802_WAWEnetFD13FC96AvgReLU_PEMO_final_pytorch_eval.pt"));
     file.insert(pair<int, string>(4, "20200802_WAWEnetFD13FC96AvgReLU_STOI_final_pytorch_eval.pt"));
+    file.insert(pair<int, string>(5, "20220507_POLQAMOSLQO_PESQMOSLQO_STOI_PEMO_ViSQOL3_c310_ESTOI_SIIBGauss_5d8c59ea6bc24b019b4fe6ac5b87d3db.pt"));
+    file.insert(pair<int, string>(6, "20220507_mos_noi_col_dis_bd9851082f6a4a06ad63f71c89daee27.pt"));
+    file.insert(pair<int, string>(7, "20220507_IU_ScaledMOS_ 2.0_ 6.0_a75c9fb04ff942d48450ebb1de24eb51.pt"));
 
+    // TODO: will need to rethink this bit to allow for multi-target outputs
     // gains and biases required to map from target output range to [-1, 1]
     // based on observed target output range across entire dataset
     std::map<int, tuple<float, float> > params;
@@ -95,6 +99,7 @@ float getWAWEnetCNN(vector<float> inSignal, int param)
 
     output = module.forward(inputs).toTensor().cpu();
 
+    // TODO: will need to refactor this bit to handle multiple targets
     /*
 
     accessing the output from the ouput tensor and apply the target bias and target gain
