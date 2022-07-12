@@ -10,16 +10,18 @@
 
 #include <numeric>
 
-
 #include <algorithm>
 
-#include "AudioFile.h";
+#include "AudioFile.h"
 
+#ifdef _WIN32
 #include <windows.h>
+#define PATH_SEP "\\"
+#else
+#define PATH_SEP "/"
+#endif
 
 using namespace std;
-
-
 
 class ctlInfo
 {
@@ -34,7 +36,8 @@ public:
     int levelNormalization;
     float activityThreshold;
 };
-class FileInfo {
+class FileInfo
+{
 public:
     string name;
     string exception;
@@ -47,7 +50,8 @@ public:
     vector<float> allActivityFactors;
     vector<float> allActiveLevels;
 };
-class AudioInfo {
+class AudioInfo
+{
 public:
     string CompressionMethod;
     int numChannels;
@@ -58,7 +62,6 @@ public:
     string comment;
     string artist;
     int bitsPerSample;
-
 };
 class Speech
 {
@@ -66,18 +69,21 @@ public:
     float activeSpeechLevel;
     float speechActivityFactor;
 };
-class loadWaveFileInputs {
+class loadWaveFileInputs
+{
 public:
     FileInfo fileInfo;
     vector<float> audiosamples;
     ctlInfo ctl;
 };
-class audioReadOutput {
+class audioReadOutput
+{
 public:
     vector<float> audiosamples;
     int SampleRate;
 };
-class audioNormalizeOutput {
+class audioNormalizeOutput
+{
 public:
     vector<float> outSamples;
     FileInfo fileinfo;
@@ -88,55 +94,50 @@ public:
 helper functions
 
 */
-template<typename T>
-vector<T> slice(vector<T>  v, int m, int n);
+template <typename T>
+vector<T> slice(vector<T> v, int m, int n);
 
-template<typename T>
-vector<T> vectorAbs(vector<T>  vect);
+template <typename T>
+vector<T> vectorAbs(vector<T> vect);
 
-template<typename T>
+template <typename T>
 vector<T> removeMean(vector<T> vect, float sum);
 
-template<typename T>
+template <typename T>
 vector<T> multiVect(vector<T> vect, float multi);
 
-template<typename T>
-T dotMulti(vector<T> vect, vector<T>  vect2);
+template <typename T>
+T dotMulti(vector<T> vect, vector<T> vect2);
 
-template<typename T>
-T sumSquares(vector<T>  vect);
+template <typename T>
+T sumSquares(vector<T> vect);
 
-template<typename T>
-vector<T> multiSlice(vector<T>  vect, float val);
+template <typename T>
+vector<T> multiSlice(vector<T> vect, float val);
 
-template<typename T>
+template <typename T>
 vector<T> MaxOrMin(vector<T> vect, float val, bool arg);
 
-template<typename T>
-vector<T> log2Vect(vector<T>  vect);
+template <typename T>
+vector<T> log2Vect(vector<T> vect);
 
-template<typename T>
-vector<T> floorVect(vector<T>  vect);
+template <typename T>
+vector<T> floorVect(vector<T> vect);
 
-template<typename T>
-vector<T> flip(vector<T>  vect);
+template <typename T>
+vector<T> flip(vector<T> vect);
 
-template<typename T>
+template <typename T>
 T sumCol(vector<vector<T>> vect, int col);
-
 
 vector<float> getZeroVector(float size);
 
-
 vector<string> getInputPair(vector<string> arr, string option);
 
-template<typename T>
+template <typename T>
 T sumVector(vector<T> vect);
 
-bool dirExists(const std::string& dirName_in);
-
-
-
+bool dirExists(const std::string &dirName_in);
 
 /*
 
@@ -161,11 +162,6 @@ start of main functions
 
 */
 
-
-
-
-
-
 vector<float> upSampleByTwo(vector<float> inSamples);
 vector<float> downSampleByTwo(vector<float> inSamples);
 vector<float> downSampleByThree(vector<float> inSamples);
@@ -189,7 +185,6 @@ Speech levelMeter(vector<float> inSamplesA, ctlInfo ctl);
 audioNormalizeOutput audioNormalize(vector<float> cAudio, ctlInfo ctl, FileInfo fInfo);
 
 void WAWEnet(vector<string> fileAndArgs);
-
 
 /*
 

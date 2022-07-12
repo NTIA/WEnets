@@ -22,9 +22,9 @@ If you need to cite our work, please use the following:
 }
 ```
 
-# Setup
+# Compiling on Windows® with Visual Studio®
 
-This implementation depends on the Pytorch® C++ library and was built using Visual Studio® on Windows. The following steps are required to build the project:
+This implementation depends on the Pytorch® C++ library and can be  built using Visual Studio® on Windows. The following steps are required to build the project:
 
 1. Download the [Pytorch C++ Library](https://pytorch.org/get-started/locally/) by selecting `stable`, `Windows`, `LibTorch`, `C++/Java` and `10.2` and then clicking the provided download link under 'Release'.
 2. Extract the downloaded `.zip` file to a directory on your computer.
@@ -43,14 +43,46 @@ This implementation depends on the Pytorch® C++ library and was built using Vis
 6. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
 7. The WAWEnet PyTorch models are required to be in the same directory as the executable or in the working directory.
 8. Set Visual Studio build settings to `x64 release` (building a debug executable requires downloading the debug version of PyTorch).
-9. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
-10. The .exe will be located in `cplusplus/x64/Release` after you build in Visual Studio
-11. You can run the .exe wherever on your machine as long as the helpScreen.txt and .pt files are in the same directory
+9. Build the executable by selecting "Build Wawenet" from the "Build" menu.
+10. To run WAWEnet, see below or set command-line arguments in Visual Studio Properties -> Debugging -> Command Arguments.
+11. The .exe will be located in `cplusplus/x64/Release` after you build in Visual Studio
+12. You can run the .exe wherever on your machine as long as the helpScreen.txt and .pt files are in the same directory
 
-# Usage
+## Usage on Windows®
 
 ```
 wawenet.exe infile [-m M|-l L|-s S|-c C|-o 'myFile.txt']
+```
+
+# Compiling on a POSIX platform with `clang`
+
+1. Download the [Pytorch C++ Library](https://pytorch.org/get-started/locally/) by selecting `stable`, `Linux` or `Mac`, `LibTorch`, `C++/Java` and `CPU` or `Default`. Then right-click on the download link and select "Copy Link".
+2. Change the version in the download link to `1.5.0` and paste the link into a new browser window or use `curl` or `wget` to download the library.
+3. Extract the downloaded `.zip` file to a directory on your computer.
+4. In a terminal, issue the `which clang++` command. If there is no result, install it. For example, on Ubuntu®, `sudo apt install clang`. On MacOS® you may need to install the XCode Command Line tools.
+5. Clone this repo and navigate to the `WEnets/cplusplus/Wawenet` directory in a terminal.
+6. The [`AudioFile`](https://github.com/adamstark/AudioFile) library is required to build the project. Place `AudioFile.h` in the `cplusplus/Wawenet` directory.
+7. Use the one of following commands to compile an executable:
+
+```shell
+# generates an executable with debug symbols
+clang++ -g -o WAWEnet -I/path/to/libtorch/include -L/path/to/libtorch/lib -ltorch_cpu -lc10 File.cpp WAWEnet.cpp WAWEnetCNN.cpp -std=c++17
+# generates an optimized executable
+clang++ -O3 -o WAWEnet -I/path/to/libtorch/include -L/path/to/libtorch/lib -ltorch_cpu -lc10 File.cpp WAWEnet.cpp WAWEnetCNN.cpp -std=c++17
+```
+
+## Usage on POSIX platforms
+
+Linux:
+
+```shell
+LD_LIBRARY_PATH=/path/to/libtorch/lib ./WAWEnet infile [-m M|-l L|-s S|-c C|-o 'myFile.txt']
+```
+
+macOS®:
+
+```shell
+DYLD_LIBRARY_PATH=/path/to/libtorch/lib ./WAWEnet infile [-m M|-l L|-s S|-c C|-o 'myFile.txt'] 
 ```
 
 ## Arguments
