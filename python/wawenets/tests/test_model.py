@@ -16,10 +16,8 @@ def model_weights_2020():
     )
 
 
-def test_WAWEnet2020(model_weights_2020):
+def test_WAWEnet2022(model_weights_2020):
     print(os.getcwd())
-    # TODO: things are named _really_ differently in the state dict of this JIT trace, i guess
-    #       do another export without doing the JIT trace, things should line up?
     script_module = torch.jit.load(model_weights_2020)
     model = WAWEnet2022()
     model.load_state_dict(script_module.state_dict())
