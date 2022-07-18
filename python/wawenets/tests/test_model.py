@@ -1,12 +1,9 @@
-import os
-
-from pathlib import Path
 from pkg_resources import resource_filename
 
 import pytest
 import torch
 
-from wawenets.model import WAWEnet2020, WAWEnet2022
+from wawenets.model import WAWEnet2022
 
 
 @pytest.fixture
@@ -17,7 +14,6 @@ def model_weights_2020():
 
 
 def test_WAWEnet2022(model_weights_2020):
-    print(os.getcwd())
     script_module = torch.jit.load(model_weights_2020)
     model = WAWEnet2022()
     model.load_state_dict(script_module.state_dict())
