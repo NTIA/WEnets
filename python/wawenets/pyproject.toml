@@ -4,7 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["Andrew Catellier <acatellier@ntia.doc.gov>"]
 include = [
-    "weights/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO_final_pytorch_eval.pt"
+    "weights/20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO.pt"
+    "weights/20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_.pt"
+    "weights/20200802_WAWEnetFD13FC96AvgReLU_PEMO.pt"
+    "weights/20200802_WAWEnetFD13FC96AvgReLU_STOI.pt"
     "speech/T000053_Q159_D401_48.wav"
 ]
 
