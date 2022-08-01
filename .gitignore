@@ -43,3 +43,6 @@ __pycache__
 
 # external header fiiles
 AudioFile.h
+
+# IDE stuff
+.vscode
