@@ -30,6 +30,7 @@ class RightPadSampleTensor:
 def load_audio_to_tensor(audio_path: Path) -> torch.tensor:
     padder = RightPadSampleTensor(48000)
     sample, sample_rate = torchaudio.load(audio_path)
+    # TODO: check sample rate, length, and number of channels, do the right things
     sample = {"sample_data": sample}
     sample = padder(sample)
 

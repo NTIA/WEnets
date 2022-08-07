@@ -58,7 +58,7 @@ def create_features(channels, features_spec) -> nn.Sequential:
     return nn.Sequential(*modules)
 
 
-class WAWEnet2020(nn.Module):
+class WAWEnetICASSP2020(nn.Module):
     features_spec = [
         ((0, 0), "prelu", 2, "avg"),
         ((0, 0), "prelu", 4, "max"),
@@ -71,14 +71,15 @@ class WAWEnet2020(nn.Module):
         ((0, 0), "prelu", 32, "avg"),
     ]
 
-    def __init__(self, num_targets: int = 1, channels: int = 96):
-        super().__init__()
+    def __init__(self, *args, num_targets: int = 1, channels: int = 96, **kwargs):
+        super().__init__(*args, **kwargs)
         self.channels = channels
         self.features = create_features(channels, self.features_spec)
         self.mapper = nn.Sequential(
             # 1 sample, 96 "features"
             nn.Linear(96, num_targets),
         )
+        self._initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
@@ -102,7 +103,7 @@ class WAWEnet2020(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-class WAWEnet2022(nn.Module):
+class WAWEnet2020(nn.Module):
     features_spec = [
         # 48,000 samples
         # filter size ~= 0.188 ms, equiv sample rate = 16000 hz, or 0.0625 ms
@@ -146,7 +147,7 @@ class WAWEnet2022(nn.Module):
         # only one sample left!
     ]
 
-    def __init__(self, num_targets: int = 1, channels: int = 96):
+    def __init__(self, *args, num_targets: int = 1, channels: int = 96, **kwargs):
         super().__init__()
         self.channels = channels
         self.features = create_features(channels, self.features_spec)
@@ -154,6 +155,7 @@ class WAWEnet2022(nn.Module):
             # 1 sample, 96 "features"
             nn.Linear(96, num_targets),
         )
+        self._initialize_weights()
 
     def forward(self, x):
         x = self.features(x)
