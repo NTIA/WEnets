@@ -1,17 +1,20 @@
+from collections import OrderedDict
 from pkg_resources import resource_filename
 
 __version__ = "0.1.0"
 
 # TODO: maybe this config-type stuff should live in a yaml somewhere?
-normalization_ranges = {
-    "PESQMOSLQO": (1.01, 4.64),
-    "POLQAMOSLQO": (1, 4.75),
-    "PEMO": (0, 1),
-    "VISQOL": (1, 5),
-    "STOI": (0.45, 1),
-    "ESTOI": (0.23, 1),
-    "SIIBGAUSS": (0, 750),
-}
+normalization_ranges = OrderedDict(
+    {
+        "PESQMOSLQO": (1.01, 4.64),
+        "POLQAMOSLQO": (1, 4.75),
+        "PEMO": (0, 1),
+        "VISQOL": (1, 5),
+        "STOI": (0.45, 1),
+        "ESTOI": (0.23, 1),
+        "SIIBGAUSS": (0, 750),
+    }
+)
 
 modeselektor = {
     1: {
