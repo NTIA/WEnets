@@ -10,8 +10,6 @@ import sox
 
 import numpy as np
 
-from tqdm import tqdm
-
 
 class FileWalker:
     def __init__(self):
@@ -31,7 +29,7 @@ class SoxConverter:
     def __init__(self):
         self.transformer = sox.Transformer()
 
-    def _convert(self, input_path: Path, output_path: Path, sample_rate=None):
+    def _convert(self, input_path: Path, output_path: Path, sample_rate: int = None):
         kwargs = dict(
             input_filepath=str(input_path),
             output_filepath=str(output_path),
@@ -68,7 +66,7 @@ class SoxConverter:
                 f"valid pcm name: {valid_pcm}:\n  {pcm_path}\n"
             )
 
-    def pcm_to_wav(self, pcm_path, wav_path, sample_rate):
+    def pcm_to_wav(self, pcm_path: Path, wav_path: Path, sample_rate: int):
         valid_pcm = self._validate_extension(pcm_path, self.raw)
         valid_wav = self._validate_extension(wav_path, self.wav)
         if valid_pcm and valid_wav:

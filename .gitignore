@@ -46,3 +46,6 @@ AudioFile.h
 
 # IDE stuff
 .vscode
+
+# python config stuff
+config.yaml

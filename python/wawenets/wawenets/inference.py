@@ -1,9 +1,7 @@
-from pathlib import Path
 from typing import Tuple
 
 import torch
 
-from wawenets.data import load_audio_to_tensor
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
 
 
@@ -41,9 +39,8 @@ class Predictor:
         weights = torch.load(weights_path)
         self.model.load_state_dict(weights["model_state_dict"])
 
-    def predict(self, file_path: Path):
-        """loads a file, makes a prediction"""
-        audio_tensor = load_audio_to_tensor(file_path)
+    def predict(self, audio_tensor: torch.tensor):
+        """makes a prediction on specified audio tensor"""
         prediction = self.model(audio_tensor).detach().numpy()
         if prediction.size > 1:
             prediction = list(prediction[0])
