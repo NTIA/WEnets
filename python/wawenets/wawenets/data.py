@@ -43,11 +43,20 @@ class WavHandler:
         self.path_to_filter = self.stl_bin_path / "filter"
         self.resampler = Resampler(self.path_to_filter)
         self.converter = SoxConverter()
+        # set file paths
         self.temp_dir = None
         self.temp_dir_path = None
         self.input_raw = None
         self.resampled_raw = None
         self.resampled_wav = None
+        # wav file metadata
+        self.metadata = None
+        self.sample_rate = None
+        self.duration = None
+        self.active_level = None
+        self.speech_activity = None
+        self.level_normalization = None
+        self.segment_step_size = None
 
     def __enter__(self):
         # set up temp dir and intermediate file paths
@@ -83,14 +92,14 @@ class WavHandler:
         return resampler_map[input_sample_rate](input_path, output_path)
 
     def resample_wav(self):
-        metadata = torchaudio.info(self.input_path)
+        self.metadata = torchaudio.info(self.input_path)
         if not self.resample_raw(
-            self.input_raw, self.resampled_raw, metadata.sample_rate
+            self.input_raw, self.resampled_raw, self.metadata.sample_rate
         ):
             raise RuntimeError(f"unable to resample {self.input_path}")
         # convert to wav
         self.converter.pcm_to_wav(
-            self.resampled_raw, self.resampled_wav, metadata.sample_rate
+            self.resampled_raw, self.resampled_wav, self.metadata.sample_rate
         )
 
     def load_wav(self, wav_path: Path) -> Tuple[torch.tensor, int]:
@@ -113,8 +122,9 @@ class WavHandler:
     def prepare_tensor(self, channel: int = 1) -> torch.tensor:
         """channel specifies the channel to be used for inference; 1-based indexing"""
 
-        # TODO: length, and stride, do the right things
-        sample, sample_rate = self.load_wav(self.resampled_wav)
+        # TODO: normalization, slicing, speech activity factor, length, and stride,
+        # do the right things
+        sample, self.sample_rate = self.load_wav(self.resampled_wav)
         pad_length = self.calculate_pad_length(sample.shape[1])
         padder = RightPadSampleTensor(pad_length)
 
@@ -122,3 +132,11 @@ class WavHandler:
         sample = padder(sample)
 
         return sample["sample_data"].unsqueeze(0).unsqueeze(0)
+
+    def package_metadata(self):
+        self.sample_rate = self.metadata.sample_rate
+        self.duration = self.metadata.frames / self.sample_rate
+        # self.active_level = None
+        # self.speech_activity = None
+        # self.level_normalization = None
+        # self.segment_step_size = None

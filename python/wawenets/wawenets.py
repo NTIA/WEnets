@@ -1,8 +1,12 @@
+import os
+import yaml
+
 from pathlib import Path
 
 import click
 
 from wawenets import modeselektor
+from wawenets.data import WavHandler
 from wawenets.inference import Predictor
 
 # do cli here
@@ -13,6 +17,31 @@ from wawenets.inference import Predictor
 # 2. prepare data
 # 3. call the model in a smart way
 # 5. print out the results
+
+
+def export_results(results: list, out_file: str = None):
+    """
+    output line format:
+    [wavfile] [channel] [sample_rate] [duration] [active_level] [speech_activity] [level_normalization] [segment_step_size] [WAWEnet_mode] [model_prediction]
+    """
+    pass
+
+
+def get_stl_path():
+    """returns the path to the STL bin dir based on the contents of
+    config.yaml"""
+    test_path = Path(os.path.realpath(__file__))
+    config_path = test_path.parent.parent / "config.yaml"
+    with open(config_path) as yaml_fp:
+        config = yaml.safe_load(yaml_fp)
+    return config["StlBinPath"]
+
+
+def read_text_file(file_path: Path) -> list:
+    """reads the lines from the given text file into a list"""
+    with open(file_path) as fp:
+        lines = fp.read().splitlines()
+    return lines
 
 
 @click.command()
@@ -78,13 +107,29 @@ from wawenets.inference import Predictor
 def cli(mode, infile, level, stride, channel, output):
     """produces quality or intelligibility estimates for specified speech
     files."""
+    # read some config
+    stl_path = get_stl_path()
+
     # set up our model
     config = modeselektor[mode]
     predictor = Predictor(**config)
-    # make a prediction
     infile = Path(infile)
-    prediction = predictor.predict(infile)
-    print(prediction)
+
+    # build up all the files that we need predictions for
+    wav_files = list()
+    if infile.suffix == ".wav":
+        wav_files.append(infile)
+    elif infile.suffix == ".txt":
+        wav_paths = [Path(item) for item in read_text_file(infile)]
+        wav_files.extend(wav_paths)
+
+    # make prediction(s)
+    for wav in wav_files:
+        with WavHandler(wav, stl_path) as wh:
+            prepared_tensor = wh.prepare_tensor(channel=channel)
+            prediction = predictor.predict(prepared_tensor)
+
+            print(prediction)
 
 
 if __name__ == "__main__":

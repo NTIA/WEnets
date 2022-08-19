@@ -51,14 +51,14 @@ def test_right_pad():
     assert result["sample_data"].shape[0] == 48
 
 
-def test_load_wav(wav_handler, test_wav):
-    # this is a stupid test now
-    result, sample_rate = wav_handler.load_wav(test_wav)
-    assert result.shape == (1, 144000)
-    assert result.dtype == torch.float32
-    assert sample_rate == 48000
+class TestWavHandler:
+    def test_load_wav(self, wav_handler, test_wav):
+        # this is a stupid test now
+        result, sample_rate = wav_handler.load_wav(test_wav)
+        assert result.shape == (1, 144000)
+        assert result.dtype == torch.float32
+        assert sample_rate == 48000
 
-
-def test_calculate_pad_length(wav_handler):
-    assert wav_handler.calculate_pad_length(24000) == 48000
-    assert wav_handler.calculate_pad_length(48001) == 96000
+    def test_calculate_pad_length(self, wav_handler):
+        assert wav_handler.calculate_pad_length(24000) == 48000
+        assert wav_handler.calculate_pad_length(48001) == 96000
