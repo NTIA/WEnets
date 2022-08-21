@@ -49,6 +49,6 @@ modeselektor = {
         "model_type": "multitarget2022",
         "weights_path": resource_filename("weights", ""),
         # order matters
-        "normalization_ranges": [],
+        "normalization_ranges": list(normalization_ranges.values()),
     },
 }

@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-import click
 import sox
 
 import numpy as np
@@ -193,7 +192,7 @@ class Resampler(Processor):
                 upsample_command, target_ratio, in_path, temp_path
             )
             if not np.close(achieved_ratio, 0.5):
-                raise RuntimeError(f"intermediary upsampling failed")
+                raise RuntimeError("intermediary upsampling failed")
             return self.down_48k_to_16k(temp_path, out_path)
 
     def up_8k_to_16k(self, in_path: Path, out_path: Path) -> bool:
@@ -286,7 +285,7 @@ class LevelMeter(Processor):
 
         return results
 
-    def level_meter(
+    def measure(
         self,
         speech_path: Path,
         sample_rate=16000,

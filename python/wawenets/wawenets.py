@@ -2,6 +2,7 @@ import os
 import yaml
 
 from pathlib import Path
+from typing import List
 
 import click
 
@@ -19,19 +20,35 @@ from wawenets.inference import Predictor
 # 5. print out the results
 
 
-def export_results(results: list, out_file: str = None):
+def export_results(results: List[dict], out_file: Path = None):
     """
-    output line format:
-    [wavfile] [channel] [sample_rate] [duration] [active_level] [speech_activity] [level_normalization] [segment_step_size] [WAWEnet_mode] [model_prediction]
+    either prints or writes to a file the results of processing.
+
+    input is a list of dictionaries containing all relevant fields and optionally
+    a file path specifying a location where results should be written.
     """
-    pass
+    line_format = (
+        "{wavfile} {channel} {sample_rate} {duration} {active_level} "
+        "{speech_activity} {level_normalization} {segment_step_size} {WAWEnet_mode} "
+        "{model_prediction}"
+    )
+    formatted = "\n".join([line_format.format(**item) for item in results])
+    if out_file:
+        out_file.write_text(formatted)
+    else:
+        print(formatted)
 
 
 def get_stl_path():
     """returns the path to the STL bin dir based on the contents of
     config.yaml"""
-    test_path = Path(os.path.realpath(__file__))
-    config_path = test_path.parent.parent / "config.yaml"
+    current_path = Path(os.path.realpath(__file__))
+    config_path = current_path.parent / "config.yaml"
+    if not config_path.is_file():
+        raise FileNotFoundError(
+            f"unable to find `config.yaml` in {config_path}. please follow the setup "
+            "instructions in README.md to create `config.yaml"
+        )
     with open(config_path) as yaml_fp:
         config = yaml.safe_load(yaml_fp)
     return config["StlBinPath"]
@@ -100,9 +117,13 @@ def read_text_file(file_path: Path) -> list:
 @click.option(
     "-o",
     "--output",
-    help=("path where a text file containing predictions should be written"),
+    help=(
+        "path where a text file containing predictions should be written. default is"
+        "None, and results are printed to stdout"
+    ),
     type=click.STRING,
     required=False,
+    default=None,
 )
 def cli(mode, infile, level, stride, channel, output):
     """produces quality or intelligibility estimates for specified speech
@@ -114,6 +135,8 @@ def cli(mode, infile, level, stride, channel, output):
     config = modeselektor[mode]
     predictor = Predictor(**config)
     infile = Path(infile)
+    if output:
+        output = Path(output)
 
     # build up all the files that we need predictions for
     wav_files = list()
@@ -124,12 +147,18 @@ def cli(mode, infile, level, stride, channel, output):
         wav_files.extend(wav_paths)
 
     # make prediction(s)
+    predictions = list()
     for wav in wav_files:
-        with WavHandler(wav, stl_path) as wh:
+        with WavHandler(wav, level, stl_path) as wh:
             prepared_tensor = wh.prepare_tensor(channel=channel)
             prediction = predictor.predict(prepared_tensor)
+            metadata = wh.package_metadata()
+            metadata.update(
+                segment_step_size=stride, WAWEnet_mode=mode, model_prediction=prediction
+            )
+            predictions.append(metadata)
 
-            print(prediction)
+    export_results(predictions, output)
 
 
 if __name__ == "__main__":
