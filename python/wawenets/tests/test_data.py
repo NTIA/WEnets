@@ -27,7 +27,7 @@ def stl_path():
 
 @pytest.fixture
 def wav_handler(test_wav, stl_path):
-    wh = WavHandler(test_wav, stl_path)
+    wh = WavHandler(test_wav, True, stl_path)
     return wh
 
 
@@ -62,3 +62,9 @@ class TestWavHandler:
     def test_calculate_pad_length(self, wav_handler):
         assert wav_handler.calculate_pad_length(24000) == 48000
         assert wav_handler.calculate_pad_length(48001) == 96000
+
+    def test_calculate_num_segments(self, wav_handler):
+        assert wav_handler.calculate_num_segments(48000, 48000) == 1
+        assert wav_handler.calculate_num_segments(48000, 24000) == 1
+        assert wav_handler.calculate_num_segments(96000, 48000) == 2
+        assert wav_handler.calculate_num_segments(96000, 24000) == 3

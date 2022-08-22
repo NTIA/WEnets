@@ -4,6 +4,7 @@ import yaml
 from pathlib import Path
 from pkg_resources import resource_filename
 
+import numpy as np
 
 from wawenets import modeselektor
 from wawenets.data import WavHandler
@@ -35,10 +36,10 @@ def wav_path():
 
 class TestPredictor:
     def test_predict(self, predictor, wav_path, stl_path):
-        with WavHandler(wav_path, stl_path) as wh:
+        with WavHandler(wav_path, True, stl_path) as wh:
             prepared_tensor = wh.prepare_tensor()
             result = predictor.predict(prepared_tensor)
-            assert result == 2.186994658410549
+            assert np.isclose(result, 2.18705556511879)
 
     def test_denormalize(self, predictor):
         denormalized = predictor.denormalize(0, (0, 2))

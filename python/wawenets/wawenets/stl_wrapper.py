@@ -40,7 +40,11 @@ class SoxConverter:
                 file_type="raw",
                 rate=sample_rate,
                 bits=16,
-                channels=1,
+                channels=1,  # TODO: is this gonna bite us
+                # ugh, it totally is:
+                # https://pysox.readthedocs.io/en/latest/api.html?highlight=channels#sox.transform.Transformer.convert
+                # use remix instead:
+                # https://pysox.readthedocs.io/en/latest/api.html?highlight=channels#sox.transform.Transformer.remix
                 encoding="signed-integer",
             )
         status = self.transformer.build(**kwargs)
@@ -53,6 +57,31 @@ class SoxConverter:
             return False
         else:
             return True
+
+    def _trim_raw(
+        self,
+        input_path: Path,
+        output_path: Path,
+        start_time: float,
+        end_time: float,
+        sample_rate: int = 16000,
+    ):
+        trim_transformer = sox.Transformer()
+        trim_transformer.trim(start_time, end_time)
+        kwargs = dict(
+            input_filepath=str(input_path),
+            output_filepath=str(output_path),
+            return_output=True,
+            file_type="raw",
+            rate=sample_rate,
+            bits=16,
+            channels=1,
+            encoding="signed-integer",
+        )
+        status = trim_transformer.build_file(**kwargs)
+        if status[0]:
+            print(f"stdout: {status[1]}")
+            print(f"stderr: {status[2]}")
 
     def wav_to_pcm(self, wav_path: Path, pcm_path: Path):
         valid_wav = self._validate_extension(wav_path, self.wav)
@@ -74,6 +103,19 @@ class SoxConverter:
             raise ValueError(
                 f"valid wav name: {valid_wav}:\n  {wav_path}\n"
                 f"valid pcm name: {valid_pcm}:\n  {pcm_path}\n"
+            )
+
+    def trim_pcm(
+        self, input_path: Path, output_path: Path, start_time: float, end_time: float
+    ):
+        valid_pcm_input = self._validate_extension(input_path, self.raw)
+        valid_pcm_output = self._validate_extension(output_path, self.raw)
+        if valid_pcm_input and valid_pcm_output:
+            self._trim_raw(input_path, output_path, start_time, end_time)
+        else:
+            raise ValueError(
+                f"valid input name: {valid_pcm_input}:\n {input_path}\n"
+                f"valid output name: {valid_pcm_output}:\n {output_path}"
             )
 
 

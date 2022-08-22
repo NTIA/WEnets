@@ -1,3 +1,4 @@
+from os import stat
 import shutil
 import tempfile
 
@@ -43,6 +44,7 @@ class WavHandler:
         self.input_path = input_path
         self.level_normalization = level_normalization
         self.stl_bin_path = Path(stl_bin_path)
+        self.num_input_samples = 48000
         # set up all our converters
         self.converter = SoxConverter()
         self.path_to_actlev = self.stl_bin_path / "actlev"
@@ -63,8 +65,6 @@ class WavHandler:
         self.metadata = None
         self.sample_rate = None
         self.duration = None
-        self.active_level = None
-        self.speech_activity = None
         self.segment_step_size = None
 
     def __enter__(self):
@@ -84,17 +84,18 @@ class WavHandler:
         # convert to raw and resample since just about everything depends on that
         self.converter.wav_to_pcm(self.input_path, self.input_raw)
         self.resample()
+        # jk, don't normalize, convert to raw, or measure here
         # normalize if requested
-        self.normalize_raw()
+        # self.normalize_raw()
         # convert to wav
-        self.converter.pcm_to_wav(
-            self.normalized_raw, self.resampled_wav, self.metadata.sample_rate
-        )
+        # self.converter.pcm_to_wav(
+        #     self.normalized_raw, self.resampled_wav, self.metadata.sample_rate
+        # )
 
         # now since we've got all the things, do a couple measurements
-        self.active_level, self.speech_activity = self.level_meter.measure(
-            self.normalized_raw
-        )
+        # self.active_level, self.speech_activity = self.level_meter.measure(
+        #     self.normalized_raw
+        # )
 
         return self
 
@@ -123,15 +124,15 @@ class WavHandler:
         ):
             raise RuntimeError(f"unable to resample {self.input_path}")
 
-    def normalize_raw(self):
+    def normalize_raw(self, input_raw: Path, normalized_raw: Path):
+        """returns a path to the file that should be used after normalization"""
         if self.level_normalization:
-            if not self.speech_normalizer.normalizer(
-                self.resampled_raw, self.normalized_raw
-            ):
+            if not self.speech_normalizer.normalizer(input_raw, normalized_raw):
                 raise RuntimeError(f"could not normalize {self.resampled_raw}")
         else:
             # if we've been instructed to not normalize, just use the resampled data
-            self.normalized_raw = self.resampled_raw
+            normalized_raw = input_raw
+        return normalized_raw
 
     def load_wav(self, wav_path: Path) -> Tuple[torch.tensor, int]:
         # load to tensor
@@ -139,21 +140,45 @@ class WavHandler:
 
         return audio_data, sample_rate
 
-    @staticmethod
-    def calculate_pad_length(num_samples: int) -> int:
+    def calculate_pad_length(self, num_samples: int) -> int:
         """calculates the number of samples required to facilitate both
         an integer-number of 3-second segments and performing inference on
         all available data."""
-        three_second_segs = num_samples // 48000
-        remainder = num_samples % 48000
+        three_second_segs = num_samples // self.num_input_samples
+        remainder = num_samples % self.num_input_samples
         if remainder:
             three_second_segs += 1
-        return three_second_segs * 48000
+        return three_second_segs * self.num_input_samples
+
+    def calculate_num_segments(self, num_samples: int, segment_length: int):
+        return ((num_samples - self.num_input_samples) // segment_length) + 1
+
+    def prepare_segment(self, start_time: int, end_time: int):
+        self.converter.trim_pcm(self.resampled_raw, trimmed_path, start_time, end_time)
+        normalized_path = self.normalize_raw(trimmed_path, normalized_path)
+        self.converter.pcm_to_wav(normalized_path, normalized_wav, 160000)
+        active_level, speech_activity = self.level_meter.measure(self.normalized_raw)
+        sample, sample_rate = self.load_wav(normalized_wav)
+        pad_length = self.calculate_pad_length(sample.shape[1])
+        padder = RightPadSampleTensor(pad_length)
+
+        sample = {"sample_data": sample[channel - 1, :]}
+        sample = padder(sample)
+
+        return sample["sample_data"].unsqueeze(0).unsqueeze(0)
 
     def prepare_tensor(self, channel: int = 1) -> torch.tensor:
         """channel specifies the channel to be used for inference; 1-based indexing"""
 
         # TODO: stride, do the right thing
+        # for each valid segment, we have to:
+        # 1. ask sox to write out the correct portion of a file to a new file
+        # 2. normalize that file
+        # 3. make measurements
+        # 3. convert it to a wav
+        # 4. read it
+        # 5. pad the last segment if necessary
+        # 6. pack the segments into a batch (!)
         self.channel = channel
         sample, self.sample_rate = self.load_wav(self.resampled_wav)
         pad_length = self.calculate_pad_length(sample.shape[1])
