@@ -26,9 +26,11 @@ class SoxConverter:
     raw = ".raw"
 
     def __init__(self):
-        self.transformer = sox.Transformer()
+        pass
 
     def _convert(self, input_path: Path, output_path: Path, sample_rate: int = None):
+        """assumes input path is a one-channel audio file"""
+        convert_transformer = sox.Transformer()
         kwargs = dict(
             input_filepath=str(input_path),
             output_filepath=str(output_path),
@@ -36,18 +38,14 @@ class SoxConverter:
         )
         if sample_rate:
             # we're only in this branch if the input file is raw
-            self.transformer.set_input_format(
+            convert_transformer.set_input_format(
                 file_type="raw",
                 rate=sample_rate,
                 bits=16,
-                channels=1,  # TODO: is this gonna bite us
-                # ugh, it totally is:
-                # https://pysox.readthedocs.io/en/latest/api.html?highlight=channels#sox.transform.Transformer.convert
-                # use remix instead:
-                # https://pysox.readthedocs.io/en/latest/api.html?highlight=channels#sox.transform.Transformer.remix
+                channels=1,
                 encoding="signed-integer",
             )
-        status = self.transformer.build(**kwargs)
+        status = convert_transformer.build(**kwargs)
         if status[0]:
             print(f"stdout: {status[1]}")
             print(f"stderr: {status[2]}")
@@ -104,6 +102,19 @@ class SoxConverter:
                 f"valid wav name: {valid_wav}:\n  {wav_path}\n"
                 f"valid pcm name: {valid_pcm}:\n  {pcm_path}\n"
             )
+
+    def select_channel(self, input_path: Path, output_path: Path, channel: int):
+        """creates a new wav file containing only the specified channel from the
+        input file."""
+        select_transformer = sox.Transformer()
+        remix = {1: [channel]}
+        # this api is a little different---calling `.remix()` returns a new
+        # transformer
+        selector = select_transformer.remix(remix)
+        status = selector.build_file(
+            input_filepath=str(input_path), output_filepath=str(output_path)
+        )
+        return status
 
     def trim_pcm(
         self, input_path: Path, output_path: Path, start_time: float, end_time: float

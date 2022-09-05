@@ -66,5 +66,23 @@ class TestWavHandler:
     def test_calculate_num_segments(self, wav_handler):
         assert wav_handler.calculate_num_segments(48000, 48000) == 1
         assert wav_handler.calculate_num_segments(48000, 24000) == 1
+        assert wav_handler.calculate_num_segments(72000, 24000) == 2
         assert wav_handler.calculate_num_segments(96000, 48000) == 2
         assert wav_handler.calculate_num_segments(96000, 24000) == 3
+
+    def test_calculate_start_stop_times(self, wav_handler):
+        # one 3-sec file, stride 48000
+        expected = [(0, 3, 0)]
+        assert wav_handler.calculate_start_stop_times(48000, 48000) == expected
+        # one 3-sec file, stride 24000
+        expected = [(0, 3, 0)]
+        assert wav_handler.calculate_start_stop_times(48000, 24000) == expected
+        # one 4.5-sec file, stride 24000
+        expected = [(0, 3, 0), (1.5, 4.5, 1)]
+        assert wav_handler.calculate_start_stop_times(72000, 24000) == expected
+        # one 6-sec file, stride 48000
+        expected = [(0, 3, 0), (3, 6, 1)]
+        assert wav_handler.calculate_start_stop_times(96000, 48000) == expected
+        # one 6-sec file, stride 24000
+        expected = [(0, 3, 0), (1.5, 4.5, 1), (3, 6, 2)]
+        assert wav_handler.calculate_start_stop_times(96000, 24000) == expected

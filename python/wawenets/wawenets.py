@@ -56,6 +56,8 @@ def get_stl_path():
 
 def read_text_file(file_path: Path) -> list:
     """reads the lines from the given text file into a list"""
+    # hmmm, the text file should probably specify the correct channel to use
+    # for each file too, 🤔
     with open(file_path) as fp:
         lines = fp.read().splitlines()
     return lines
@@ -149,9 +151,9 @@ def cli(mode, infile, level, stride, channel, output):
     # make prediction(s)
     predictions = list()
     for wav in wav_files:
-        with WavHandler(wav, level, stl_path) as wh:
-            prepared_tensor = wh.prepare_tensor(channel=channel)
-            prediction = predictor.predict(prepared_tensor)
+        with WavHandler(wav, level, stl_path, channel=channel) as wh:
+            prepared_batch, active_levels, speech_activity = wh.prepare_tensor(stride)
+            prediction = predictor.predict(prepared_batch)
             metadata = wh.package_metadata()
             metadata.update(
                 segment_step_size=stride, WAWEnet_mode=mode, model_prediction=prediction

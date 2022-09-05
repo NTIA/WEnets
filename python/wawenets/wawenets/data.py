@@ -1,4 +1,3 @@
-from os import stat
 import shutil
 import tempfile
 
@@ -29,7 +28,7 @@ class RightPadSampleTensor:
             sample["sample_data"] = sample["sample_data"][:, : self.final_length]
             return sample
         padder = torch.nn.ConstantPad1d((0, pad_length), 0)
-        sample["sample_data"] = padder(sample["sample_data"])
+        sample["sample_data"] = padder(sample["sample_data"]).unsqueeze(0)
         return sample
 
 
@@ -39,12 +38,18 @@ class WavHandler:
     right now, can only be used as a context manager"""
 
     def __init__(
-        self, input_path: Path, level_normalization: bool, stl_bin_path: str
+        self,
+        input_path: Path,
+        level_normalization: bool,
+        stl_bin_path: str,
+        channel: int = 1,
     ) -> None:
         self.input_path = input_path
         self.level_normalization = level_normalization
         self.stl_bin_path = Path(stl_bin_path)
         self.num_input_samples = 48000
+        self.samples_per_second = 16000
+        self.channel = channel
         # set up all our converters
         self.converter = SoxConverter()
         self.path_to_actlev = self.stl_bin_path / "actlev"
@@ -56,6 +61,7 @@ class WavHandler:
         # set file paths
         self.temp_dir = None
         self.temp_dir_path = None
+        self.downmixed_wav = None
         self.input_raw = None
         self.normalized_raw = None
         self.resampled_raw = None
@@ -71,6 +77,7 @@ class WavHandler:
         # set up temp dir and intermediate file paths
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_dir_path = Path(self.temp_dir.name)
+        self.downmixed_wav = self.temp_dir_path / "downmixed.wav"
         self.input_raw = self.temp_dir_path / "input.raw"
         self.normalized_raw = self.temp_dir_path / "normalized.raw"
         self.resampled_raw = self.temp_dir_path / "resampled.raw"
@@ -81,8 +88,11 @@ class WavHandler:
         self.sample_rate = self.metadata.sample_rate
         self.duration = self.metadata.num_frames / self.sample_rate
 
+        # grab the channel we're supposed to be working on
+        self.converter.select_channel(self.input_path, self.downmixed_wav, self.channel)
+
         # convert to raw and resample since just about everything depends on that
-        self.converter.wav_to_pcm(self.input_path, self.input_raw)
+        self.converter.wav_to_pcm(self.downmixed_wav, self.input_raw)
         self.resample()
         # jk, don't normalize, convert to raw, or measure here
         # normalize if requested
@@ -150,25 +160,54 @@ class WavHandler:
             three_second_segs += 1
         return three_second_segs * self.num_input_samples
 
-    def calculate_num_segments(self, num_samples: int, segment_length: int):
-        return ((num_samples - self.num_input_samples) // segment_length) + 1
+    def calculate_num_segments(self, num_samples: int, stride: int):
+        return ((num_samples - self.num_input_samples) // stride) + 1
 
-    def prepare_segment(self, start_time: int, end_time: int):
+    def calculate_start_stop_times(self, num_samples: int, stride: int):
+        """generates a list of start and stop times based on the number of samples
+        in the file and the specified stride"""
+        start = 0
+        start_stop_times = list()
+        for seg_number in range(self.calculate_num_segments(num_samples, stride)):
+            stop = start + self.num_input_samples
+            start_stop_times.append(
+                (
+                    start / self.samples_per_second,
+                    stop / self.samples_per_second,
+                    seg_number,
+                )
+            )
+            start += stride
+        return start_stop_times
+
+    def prepare_segment(self, start_time: float, end_time: float, seg_number: int):
+        # we are using sox to trim because otherwise we'd be manually writing
+        # samples to disk and doing a bunch of conversions in order to do the
+        # measurements/etc.
+        trimmed_path = (
+            self.resampled_raw.parent
+            / f"{self.resampled_raw.stem}_seg_{seg_number}.raw"
+        )
         self.converter.trim_pcm(self.resampled_raw, trimmed_path, start_time, end_time)
-        normalized_path = self.normalize_raw(trimmed_path, normalized_path)
-        self.converter.pcm_to_wav(normalized_path, normalized_wav, 160000)
-        active_level, speech_activity = self.level_meter.measure(self.normalized_raw)
+        normalized_raw = trimmed_path.parent / f"{trimmed_path.stem}_norm.raw"
+        normalized_raw = self.normalize_raw(trimmed_path, normalized_raw)
+        normalized_wav = normalized_raw.parent / f"{normalized_raw.stem}.wav"
+        self.converter.pcm_to_wav(normalized_raw, normalized_wav, 16000)
+        active_level, speech_activity = self.level_meter.measure(normalized_raw)
         sample, sample_rate = self.load_wav(normalized_wav)
         pad_length = self.calculate_pad_length(sample.shape[1])
         padder = RightPadSampleTensor(pad_length)
 
-        sample = {"sample_data": sample[channel - 1, :]}
+        sample = {"sample_data": sample}
         sample = padder(sample)
+        sample["active_level"] = active_level
+        sample["speech_activity"] = speech_activity
 
-        return sample["sample_data"].unsqueeze(0).unsqueeze(0)
+        return sample
 
-    def prepare_tensor(self, channel: int = 1) -> torch.tensor:
-        """channel specifies the channel to be used for inference; 1-based indexing"""
+    def prepare_tensor(self, stride) -> torch.tensor:
+        """creates a tensor for input to the model. this is where files that are
+        longer than three seconds are handled."""
 
         # TODO: stride, do the right thing
         # for each valid segment, we have to:
@@ -178,16 +217,21 @@ class WavHandler:
         # 3. convert it to a wav
         # 4. read it
         # 5. pad the last segment if necessary
+        # ----- above items can happen in `prepare_segment`
         # 6. pack the segments into a batch (!)
-        self.channel = channel
-        sample, self.sample_rate = self.load_wav(self.resampled_wav)
-        pad_length = self.calculate_pad_length(sample.shape[1])
-        padder = RightPadSampleTensor(pad_length)
 
-        sample = {"sample_data": sample[channel - 1, :]}
-        sample = padder(sample)
+        segments = list()
+        active_levels = list()
+        speech_activity = list()
+        for seg in self.calculate_start_stop_times(self.metadata.num_frames, stride):
+            segment = self.prepare_segment(*seg)
+            segments.append(segment["sample_data"])
+            active_levels.append(segment["active_level"])
+            speech_activity.append(segment["speech_activity"])
 
-        return sample["sample_data"].unsqueeze(0).unsqueeze(0)
+        batch = torch.cat(segments)
+
+        return batch, active_levels, speech_activity
 
     def package_metadata(self):
         return {
