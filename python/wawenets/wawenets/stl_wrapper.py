@@ -66,17 +66,19 @@ class SoxConverter:
     ):
         trim_transformer = sox.Transformer()
         trim_transformer.trim(start_time, end_time)
-        kwargs = dict(
-            input_filepath=str(input_path),
-            output_filepath=str(output_path),
-            return_output=True,
+        trim_transformer.set_input_format(
             file_type="raw",
             rate=sample_rate,
             bits=16,
             channels=1,
             encoding="signed-integer",
         )
-        status = trim_transformer.build_file(**kwargs)
+        kwargs = dict(
+            input_filepath=str(input_path),
+            output_filepath=str(output_path),
+            return_output=True,
+        )
+        status = trim_transformer.build(**kwargs)
         if status[0]:
             print(f"stdout: {status[1]}")
             print(f"stderr: {status[2]}")

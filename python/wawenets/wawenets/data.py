@@ -20,7 +20,7 @@ class RightPadSampleTensor:
 
     def __call__(self, sample):
         # calculate how much to pad
-        num_samples = sample["sample_data"].shape[0]
+        num_samples = sample["sample_data"].shape[1]
         pad_length = self.final_length - num_samples
         if pad_length <= 0:
             return sample
@@ -28,6 +28,7 @@ class RightPadSampleTensor:
             sample["sample_data"] = sample["sample_data"][:, : self.final_length]
             return sample
         padder = torch.nn.ConstantPad1d((0, pad_length), 0)
+        # TODO: doublecheck below after all these changes
         sample["sample_data"] = padder(sample["sample_data"]).unsqueeze(0)
         return sample
 
@@ -67,7 +68,6 @@ class WavHandler:
         self.resampled_raw = None
         self.resampled_wav = None
         # wav file metadata
-        self.channel = None
         self.metadata = None
         self.sample_rate = None
         self.duration = None
@@ -223,15 +223,20 @@ class WavHandler:
         segments = list()
         active_levels = list()
         speech_activity = list()
-        for seg in self.calculate_start_stop_times(self.metadata.num_frames, stride):
+        start_stop_times = self.calculate_start_stop_times(
+            self.metadata.num_frames, stride
+        )
+        for seg in start_stop_times:
             segment = self.prepare_segment(*seg)
             segments.append(segment["sample_data"])
             active_levels.append(segment["active_level"])
             speech_activity.append(segment["speech_activity"])
 
+        # TODO: make the batch dimension happen even when the length of
+        #       `segments` is only 1
         batch = torch.cat(segments)
 
-        return batch, active_levels, speech_activity
+        return batch, active_levels, speech_activity, start_stop_times
 
     def package_metadata(self):
         return {
@@ -239,7 +244,5 @@ class WavHandler:
             "channel": self.channel,
             "sample_rate": self.sample_rate,
             "duration": self.duration,
-            "active_level": self.active_level,
-            "speech_activity": self.speech_activity,
             "level_normalization": self.level_normalization,
         }

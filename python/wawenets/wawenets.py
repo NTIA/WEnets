@@ -19,6 +19,22 @@ from wawenets.inference import Predictor
 # 3. call the model in a smart way
 # 5. print out the results
 
+"""
+file name
+segment number
+channel
+sample rate
+start time
+stop time
+active level
+speech activity
+level normalization
+segment step size
+mode
+predictor 1 prediction
+predictor 2 prediction
+"""
+
 
 def export_results(results: List[dict], out_file: Path = None):
     """
@@ -28,11 +44,34 @@ def export_results(results: List[dict], out_file: Path = None):
     a file path specifying a location where results should be written.
     """
     line_format = (
-        "{wavfile} {channel} {sample_rate} {duration} {active_level} "
-        "{speech_activity} {level_normalization} {segment_step_size} {WAWEnet_mode} "
-        "{model_prediction}"
+        "{wavfile} {segment_number} {channel} {sample_rate} {start_time} {stop_time} "
+        "{active_level} {speech_activity} {level_normalization} {segment_step_size} "
+        "{WAWEnet_mode} {model_prediction}"
     )
-    formatted = "\n".join([line_format.format(**item) for item in results])
+    # generate the lines for each segment in each file
+    lines = list()
+    # loop over files
+    for result in results:
+        start_stop_times = result.pop("start_stop_times")
+        active_levels = result.pop("active_levels")
+        speech_activities = result.pop("speech_activities")
+        per_seg_meta = zip(start_stop_times, active_levels, speech_activities)
+        # loop over segments
+        for segment_number, (
+            (start_time, stop_time),
+            active_level,
+            speech_activity,
+        ) in enumerate(per_seg_meta):
+            sub_result = result.copy()
+            sub_result.update(
+                segment_number=segment_number,
+                start_time=start_time,
+                stop_time=stop_time,
+                active_level=active_level,
+                speech_activity=speech_activity,
+            )
+            lines.append(line_format.format(**sub_result))
+    formatted = "\n".join(lines)
     if out_file:
         out_file.write_text(formatted)
     else:
@@ -152,11 +191,21 @@ def cli(mode, infile, level, stride, channel, output):
     predictions = list()
     for wav in wav_files:
         with WavHandler(wav, level, stl_path, channel=channel) as wh:
-            prepared_batch, active_levels, speech_activity = wh.prepare_tensor(stride)
+            (
+                prepared_batch,
+                active_levels,
+                speech_activities,
+                start_stop_times,
+            ) = wh.prepare_tensor(stride)
             prediction = predictor.predict(prepared_batch)
             metadata = wh.package_metadata()
             metadata.update(
-                segment_step_size=stride, WAWEnet_mode=mode, model_prediction=prediction
+                segment_step_size=stride,
+                WAWEnet_mode=mode,
+                model_prediction=prediction,
+                active_levels=active_levels,
+                speech_activities=speech_activities,
+                start_stop_times=start_stop_times,
             )
             predictions.append(metadata)
 
