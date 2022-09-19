@@ -22,6 +22,8 @@ class RightPadSampleTensor:
         # calculate how much to pad
         num_samples = sample["sample_data"].shape[1]
         pad_length = self.final_length - num_samples
+        # unsqueeze and make a batch dim, i think this is the right place to do that
+        sample["sample_data"] = sample["sample_data"].unsqueeze(0)
         if pad_length <= 0:
             return sample
         elif pad_length < 0:
@@ -29,7 +31,7 @@ class RightPadSampleTensor:
             return sample
         padder = torch.nn.ConstantPad1d((0, pad_length), 0)
         # TODO: doublecheck below after all these changes
-        sample["sample_data"] = padder(sample["sample_data"]).unsqueeze(0)
+        sample["sample_data"] = padder(sample["sample_data"])
         return sample
 
 

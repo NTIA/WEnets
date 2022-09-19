@@ -36,19 +36,19 @@ def test_right_pad():
     # TODO: refactor to remove redundant code
 
     # smaller
-    test_tensor = torch.zeros((24))
+    test_tensor = torch.zeros((1, 24))
     result = padder({"sample_data": test_tensor})
-    assert result["sample_data"].shape[0] == 48
+    assert result["sample_data"].shape[2] == 48
 
     # larger
-    test_tensor = torch.zeros((49))
+    test_tensor = torch.zeros((1, 49))
     result = padder({"sample_data": test_tensor})
-    assert result["sample_data"].shape[0] == 49
+    assert result["sample_data"].shape[2] == 49
 
     # same size
-    test_tensor = torch.zeros((48))
+    test_tensor = torch.zeros((1, 48))
     result = padder({"sample_data": test_tensor})
-    assert result["sample_data"].shape[0] == 48
+    assert result["sample_data"].shape[2] == 48
 
 
 class TestWavHandler:

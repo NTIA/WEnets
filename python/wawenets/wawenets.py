@@ -55,20 +55,23 @@ def export_results(results: List[dict], out_file: Path = None):
         start_stop_times = result.pop("start_stop_times")
         active_levels = result.pop("active_levels")
         speech_activities = result.pop("speech_activities")
+        model_predictions = result.pop("model_prediction")
         per_seg_meta = zip(start_stop_times, active_levels, speech_activities)
         # loop over segments
-        for segment_number, (
-            (start_time, stop_time),
+        for (
+            (start_time, stop_time, segment_number),
             active_level,
             speech_activity,
-        ) in enumerate(per_seg_meta):
+        ) in per_seg_meta:
             sub_result = result.copy()
+            model_prediction = model_predictions
             sub_result.update(
                 segment_number=segment_number,
                 start_time=start_time,
                 stop_time=stop_time,
                 active_level=active_level,
                 speech_activity=speech_activity,
+                model_prediction=model_prediction,
             )
             lines.append(line_format.format(**sub_result))
     formatted = "\n".join(lines)
@@ -208,6 +211,8 @@ def cli(mode, infile, level, stride, channel, output):
                 start_stop_times=start_stop_times,
             )
             predictions.append(metadata)
+        # TODO: calculate average prediction for all segments that have
+        #       speech activity > 0.5
 
     export_results(predictions, output)
 

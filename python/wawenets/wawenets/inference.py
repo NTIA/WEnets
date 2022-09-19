@@ -42,6 +42,16 @@ class Predictor:
     def predict(self, audio_tensor: torch.tensor):
         """makes a prediction on specified audio tensor"""
         prediction = self.model(audio_tensor).detach().numpy()
+        # TODO: check the shape here and loop over batch dimension
+        #       if necessary
+        # a prediction on only one segment with only one target will be
+        # just a numpy number and will not have a shape
+        if not prediction.shape:
+            prediction = self.denormalize(
+                prediction.item(), self.normalization_ranges[0]
+            )
+            return prediction
+        # TODO: grab the multi target weights from PHASMA!!!
         if prediction.size > 1:
             prediction = list(prediction[0])
             assert len(prediction) == len(self.normalization_ranges)
@@ -49,10 +59,7 @@ class Predictor:
                 self.denormalize(pred, norm_range)
                 for pred, norm_range in zip(prediction, self.normalization_ranges)
             ]
-        else:
-            prediction = self.denormalize(
-                prediction.item(), self.normalization_ranges[0]
-            )
+
         return prediction
 
     def denormalize(self, prediction, target_minmax: Tuple):
