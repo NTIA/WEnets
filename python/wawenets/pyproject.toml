@@ -8,6 +8,7 @@ include = [
     "weights/20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_.pt",
     "weights/20200802_WAWEnetFD13FC96AvgReLU_PEMO.pt",
     "weights/20200802_WAWEnetFD13FC96AvgReLU_STOI.pt",
+    "weights/POLQAMOSLQO_PESQMOSLQO_STOI_PEMO_ViSQOL3_c310_ESTOI_SIIBGauss_5d8c59ea6bc24b019b4fe6ac5b87d3db.pt",
     "speech/T000053_Q159_D401_48.wav",
     "speech/T000093_Q446_D401.wav",
 ]

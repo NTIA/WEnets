@@ -47,7 +47,10 @@ modeselektor = {
     },
     5: {
         "model_type": "multitarget2022",
-        "weights_path": resource_filename("weights", ""),
+        "weights_path": resource_filename(
+            "weights",
+            "POLQAMOSLQO_PESQMOSLQO_STOI_PEMO_ViSQOL3_c310_ESTOI_SIIBGauss_5d8c59ea6bc24b019b4fe6ac5b87d3db.pt",
+        ),
         # order matters
         "normalization_ranges": list(normalization_ranges.values()),
     },

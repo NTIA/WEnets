@@ -17,7 +17,7 @@ class Predictor:
         "wawenet2020": {"model_class": WAWEnet2020, "num_targets": 1, "channels": 96},
         "multitarget2022": {
             "model_class": WAWEnet2020,
-            "num_targets": 12,
+            "num_targets": 7,
             "channels": 96,
         },
     }
@@ -51,7 +51,6 @@ class Predictor:
                 prediction.item(), self.normalization_ranges[0]
             )
             return prediction
-        # TODO: grab the multi target weights from PHASMA!!!
         if prediction.size > 1:
             prediction = list(prediction[0])
             assert len(prediction) == len(self.normalization_ranges)
