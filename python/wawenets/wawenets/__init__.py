@@ -23,6 +23,7 @@ modeselektor = {
             "weights", "20200801_WAWEnetFD13FC96AvgReLU_PESQMOSLQO.pt"
         ),
         "normalization_ranges": [normalization_ranges["PESQMOSLQO"]],
+        "predictor_names": ["PESQMOSLQO"],
     },
     2: {
         "model_type": "wawenet2020",
@@ -30,6 +31,7 @@ modeselektor = {
             "weights", "20200801_WAWEnetFD13FC96AvgReLU_POLQAMOSLQO_.pt"
         ),
         "normalization_ranges": [normalization_ranges["POLQAMOSLQO"]],
+        "predictor_names": ["POLQAMOSLQO"],
     },
     3: {
         "model_type": "wawenet2020",
@@ -37,6 +39,7 @@ modeselektor = {
             "weights", "20200802_WAWEnetFD13FC96AvgReLU_PEMO.pt"
         ),
         "normalization_ranges": [normalization_ranges["PEMO"]],
+        "predictor_names": ["PEMO"],
     },
     4: {
         "model_type": "wawenet2020",
@@ -44,6 +47,7 @@ modeselektor = {
             "weights", "20200802_WAWEnetFD13FC96AvgReLU_STOI.pt"
         ),
         "normalization_ranges": [normalization_ranges["STOI"]],
+        "predictor_names": ["STOI"],
     },
     5: {
         "model_type": "multitarget2022",
@@ -53,5 +57,6 @@ modeselektor = {
         ),
         # order matters
         "normalization_ranges": list(normalization_ranges.values()),
+        "predictor_names": list(normalization_ranges.keys()),
     },
 }

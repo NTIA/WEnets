@@ -50,5 +50,5 @@ create the env:
 conda create -n wenets python=3.10
 conda activate wenets
 pip install sox tqdm pyyaml
-conda install pytorch torchvision torchaudio -c pytorch
+conda install pytorch torchvision torchaudio  pandas -c pytorch
 ```

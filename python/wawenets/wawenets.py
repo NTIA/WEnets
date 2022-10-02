@@ -2,13 +2,13 @@ import os
 import yaml
 
 from pathlib import Path
-from typing import List
 
 import click
 
 from wawenets import modeselektor
 from wawenets.data import WavHandler
 from wawenets.inference import Predictor
+from wawenets.postprocess import PostProcessor
 
 # do cli here
 
@@ -18,67 +18,6 @@ from wawenets.inference import Predictor
 # 2. prepare data
 # 3. call the model in a smart way
 # 5. print out the results
-
-"""
-file name
-segment number
-channel
-sample rate
-start time
-stop time
-active level
-speech activity
-level normalization
-segment step size
-mode
-predictor 1 prediction
-predictor 2 prediction
-"""
-
-
-def export_results(results: List[dict], out_file: Path = None):
-    """
-    either prints or writes to a file the results of processing.
-
-    input is a list of dictionaries containing all relevant fields and optionally
-    a file path specifying a location where results should be written.
-    """
-    line_format = (
-        "{wavfile} {segment_number} {channel} {sample_rate} {start_time} {stop_time} "
-        "{active_level} {speech_activity} {level_normalization} {segment_step_size} "
-        "{WAWEnet_mode} {model_prediction}"
-    )
-    # generate the lines for each segment in each file
-    lines = list()
-    # loop over files
-    for result in results:
-        start_stop_times = result.pop("start_stop_times")
-        active_levels = result.pop("active_levels")
-        speech_activities = result.pop("speech_activities")
-        model_predictions = result.pop("model_prediction")
-        per_seg_meta = zip(start_stop_times, active_levels, speech_activities)
-        # loop over segments
-        for (
-            (start_time, stop_time, segment_number),
-            active_level,
-            speech_activity,
-        ) in per_seg_meta:
-            sub_result = result.copy()
-            model_prediction = model_predictions
-            sub_result.update(
-                segment_number=segment_number,
-                start_time=start_time,
-                stop_time=stop_time,
-                active_level=active_level,
-                speech_activity=speech_activity,
-                model_prediction=model_prediction,
-            )
-            lines.append(line_format.format(**sub_result))
-    formatted = "\n".join(lines)
-    if out_file:
-        out_file.write_text(formatted)
-    else:
-        print(formatted)
 
 
 def get_stl_path():
@@ -211,10 +150,9 @@ def cli(mode, infile, level, stride, channel, output):
                 start_stop_times=start_stop_times,
             )
             predictions.append(metadata)
-        # TODO: calculate average prediction for all segments that have
-        #       speech activity > 0.5
 
-    export_results(predictions, output)
+    pp = PostProcessor(predictions)
+    pp.export_results(output)
 
 
 if __name__ == "__main__":

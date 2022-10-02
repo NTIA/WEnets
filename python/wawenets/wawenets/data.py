@@ -234,8 +234,6 @@ class WavHandler:
             active_levels.append(segment["active_level"])
             speech_activity.append(segment["speech_activity"])
 
-        # TODO: make the batch dimension happen even when the length of
-        #       `segments` is only 1
         batch = torch.cat(segments)
 
         return batch, active_levels, speech_activity, start_stop_times
