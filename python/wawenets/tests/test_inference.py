@@ -36,11 +36,19 @@ def wav_path():
 
 class TestPredictor:
     def test_predict(self, predictor, wav_path, stl_path):
-        with WavHandler(wav_path, True, stl_path) as wh:
-            prepared_tensor = wh.prepare_tensor()
-            result = predictor.predict(prepared_tensor)
-            assert np.isclose(result, 2.18705556511879)
+        with WavHandler(wav_path, True, stl_path, channel=1) as wh:
+            (
+                prepared_batch,
+                active_levels,
+                speech_activities,
+                start_stop_times,
+            ) = wh.prepare_tensor(stride=48000)
+            result = predictor.predict(prepared_batch)
+            assert np.isclose(result[0]["PESQMOSLQO"], 4.189448197185993)
+            assert np.isclose(active_levels[0], -26.001)
+            assert np.isclose(speech_activities[0], 49.96)
+            assert start_stop_times == [(0.0, 3.0, 0)]
 
     def test_denormalize(self, predictor):
-        denormalized = predictor.denormalize(0, (0, 2))
+        denormalized = predictor._denormalize(0, (0, 2))
         assert denormalized == 1
