@@ -89,7 +89,7 @@ class PostProcessor:
 
     def _convert_to_df(self) -> pd.DataFrame:
         """converts repackaged result data into a dataframe and calculates
-        per-file averages using only segments with SAF > 0.5"""
+        per-file averages using only segments with SAF > 50"""
         df = pd.DataFrame(self.packaged)
 
         # get the names of the predictors in these results
@@ -98,11 +98,11 @@ class PostProcessor:
         # explode our model predictions out into their own columns
         df = self._exploder(df, "model_prediction", "")
 
-        # calculate per-file scores based on segments with speech activity > 0.5
+        # calculate per-file scores based on segments with speech activity > 50
         new_rows = list()
         for wavfile, file_df in df.groupby("wavfile"):
             first_row = file_df.iloc[0]
-            active_df = file_df[file_df["speech_activity"] > 0.5]
+            active_df = file_df[file_df["speech_activity"] > 50]
             # make a new row for this file with the mean values
             new_row = dict()
             # grab the mean values
@@ -111,7 +111,7 @@ class PostProcessor:
             # populate the other columns
             new_row.update(
                 wavfile=first_row["wavfile"],
-                segment_number="all with SAF > 0.5",
+                segment_number="all with SAF > 50",
                 channel=first_row["channel"],
                 sample_rate=first_row["sample_rate"],
                 duration=first_row["duration"],
@@ -121,6 +121,6 @@ class PostProcessor:
             )
             new_rows.append(new_row)
         new_rows = pd.DataFrame(new_rows)
-        df = pd.concat([df, new_rows])
+        df = pd.concat([df, new_rows], ignore_index=True)
         df = df.drop(columns=["model_prediction"])
         return df
