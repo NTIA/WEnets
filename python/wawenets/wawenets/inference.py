@@ -15,9 +15,14 @@ class Predictor:
             "channels": 96,
         },
         "wawenet2020": {"model_class": WAWEnet2020, "num_targets": 1, "channels": 96},
-        "multitarget2022": {
+        "multitarget_obj_2022": {
             "model_class": WAWEnet2020,
             "num_targets": 7,
+            "channels": 96,
+        },
+        "multitarget_subj_obj_2022": {
+            "model_class": WAWEnet2020,
+            "num_targets": 11,
             "channels": 96,
         },
     }

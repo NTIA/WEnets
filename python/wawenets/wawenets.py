@@ -101,7 +101,7 @@ def read_text_file(file_path: Path) -> list:
     "-o",
     "--output",
     help=(
-        "path where a text file containing predictions should be written. default is"
+        "path where a CSV file containing predictions should be written. default is"
         "None, and results are printed to stdout"
     ),
     type=click.STRING,

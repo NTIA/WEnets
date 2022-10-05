@@ -6,6 +6,10 @@ __version__ = "0.1.0"
 # TODO: maybe this config-type stuff should live in a yaml somewhere?
 normalization_ranges = OrderedDict(
     {
+        "mos": (1, 5),
+        "noi": (1, 5),
+        "col": (1, 5),
+        "dis": (1, 5),
         "PESQMOSLQO": (1.01, 4.64),
         "POLQAMOSLQO": (1, 4.75),
         "PEMO": (0, 1),
@@ -50,10 +54,20 @@ modeselektor = {
         "predictor_names": ["STOI"],
     },
     5: {
-        "model_type": "multitarget2022",
+        "model_type": "multitarget_obj_2022",
         "weights_path": resource_filename(
             "weights",
             "POLQAMOSLQO_PESQMOSLQO_STOI_PEMO_ViSQOL3_c310_ESTOI_SIIBGauss_5d8c59ea6bc24b019b4fe6ac5b87d3db.pt",
+        ),
+        # order matters
+        "normalization_ranges": list(normalization_ranges.values())[4:],
+        "predictor_names": list(normalization_ranges.keys())[4:],
+    },
+    6: {
+        "model_type": "multitarget_subj_obj_2022",
+        "weights_path": resource_filename(
+            "weights",
+            "mos_noi_col_dis_PESQMOSLQO_POLQAMOSLQO_PEMO_ViSQOL3_C310_STOI_ESTOI_SIIBGauss_5dd8fccf49a84289b9260524ac38ccbe.pt",
         ),
         # order matters
         "normalization_ranges": list(normalization_ranges.values()),
