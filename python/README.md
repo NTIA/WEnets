@@ -40,7 +40,7 @@ TODO: make an easy way to point to the STL tools in the python code. maybe i can
 
 ## conda env
 
-one way to install the python libraries required to run the python version of WENets is using anaconda (or miniconda). 
+one way to install the python libraries required to run the python version of WAWENets is using anaconda (or miniconda). 
 once anaconda is installed, use the following commands to set up and activate a new conda env:
 
 ```shell
@@ -48,7 +48,7 @@ conda env create -f wenets_env.yaml
 conda activate wenets_dist
 ```
 
-# running WENets
+# running WAWENets
 now, you should be able to run the following command and see its output:
 
 ```shell
