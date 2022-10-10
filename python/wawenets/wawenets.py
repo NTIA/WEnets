@@ -108,7 +108,14 @@ def read_text_file(file_path: Path) -> list:
     required=False,
     default=None,
 )
-def cli(mode, infile, level, stride, channel, output):
+def cli(
+    mode: int = 1,
+    infile: str = "",
+    level: bool = True,
+    stride: int = 48000,
+    channel: int = 1,
+    output: str = None,
+):
     """produces quality or intelligibility estimates for specified speech
     files."""
     # read some config
