@@ -74,6 +74,7 @@ class WavHandler:
         self.sample_rate = None
         self.duration = None
         self.segment_step_size = None
+        self.resampled_frames = None
 
     def __enter__(self):
         # set up temp dir and intermediate file paths
@@ -85,10 +86,10 @@ class WavHandler:
         self.resampled_raw = self.temp_dir_path / "resampled.raw"
         self.resampled_wav = self.temp_dir_path / "resampled.wav"
 
-        # store some metadata
-        self.metadata = torchaudio.info(self.input_path)
-        self.sample_rate = self.metadata.sample_rate
-        self.duration = self.metadata.num_frames / self.sample_rate
+        # store some metadata about our input file
+        metadata = torchaudio.info(self.input_path)
+        self.sample_rate = metadata.sample_rate
+        self.duration = metadata.num_frames / self.sample_rate
 
         # grab the channel we're supposed to be working on
         self.converter.select_channel(self.input_path, self.downmixed_wav, self.channel)
@@ -96,18 +97,14 @@ class WavHandler:
         # convert to raw and resample since just about everything depends on that
         self.converter.wav_to_pcm(self.downmixed_wav, self.input_raw)
         self.resample()
-        # jk, don't normalize, convert to raw, or measure here
-        # normalize if requested
-        # self.normalize_raw()
-        # convert to wav
-        # self.converter.pcm_to_wav(
-        #     self.normalized_raw, self.resampled_wav, self.metadata.sample_rate
-        # )
 
-        # now since we've got all the things, do a couple measurements
-        # self.active_level, self.speech_activity = self.level_meter.measure(
-        #     self.normalized_raw
-        # )
+        # convert to wav and gather some metadata, even though the resampled wav
+        # won't be used after this. a little wasteful
+        self.converter.pcm_to_wav(
+            self.resampled_raw, self.resampled_wav, self.samples_per_second
+        )
+        metadata = torchaudio.info(self.resampled_wav)
+        self.resampled_frames = metadata.num_frames
 
         return self
 
@@ -131,9 +128,7 @@ class WavHandler:
         return resampler_map[input_sample_rate](input_path, output_path)
 
     def resample(self):
-        if not self.resample_raw(
-            self.input_raw, self.resampled_raw, self.metadata.sample_rate
-        ):
+        if not self.resample_raw(self.input_raw, self.resampled_raw, self.sample_rate):
             raise RuntimeError(f"unable to resample {self.input_path}")
 
     def normalize_raw(self, input_raw: Path, normalized_raw: Path):
@@ -211,7 +206,6 @@ class WavHandler:
         """creates a tensor for input to the model. this is where files that are
         longer than three seconds are handled."""
 
-        # TODO: stride, do the right thing
         # for each valid segment, we have to:
         # 1. ask sox to write out the correct portion of a file to a new file
         # 2. normalize that file
@@ -226,7 +220,7 @@ class WavHandler:
         active_levels = list()
         speech_activity = list()
         start_stop_times = self.calculate_start_stop_times(
-            self.metadata.num_frames, stride
+            self.resampled_frames, stride
         )
         for seg in start_stop_times:
             segment = self.prepare_segment(*seg)

@@ -232,21 +232,21 @@ class Resampler(Processor):
         return self._call_filter(command, target_ratio, in_path, out_path)
 
     def down_24k_to_16k(self, in_path: Path, out_path: Path) -> bool:
-        with tempfile.TemporaryFile() as temporary:
-            temp_path = temporary.name
-            target_ratio = 1.5
+        with tempfile.NamedTemporaryFile() as temporary:
+            temp_path = Path(temporary.name)
+            target_ratio = 0.5
             upsample_command = [
                 self.filter_path,
                 "-q",
                 "-up",
                 "HQ2",
                 str(in_path),
-                temp_path,
+                str(temp_path),
             ]
             achieved_ratio = self._call_filter(
                 upsample_command, target_ratio, in_path, temp_path
             )
-            if not np.close(achieved_ratio, 0.5):
+            if not achieved_ratio:
                 raise RuntimeError("intermediary upsampling failed")
             return self.down_48k_to_16k(temp_path, out_path)
 
