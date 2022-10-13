@@ -46,7 +46,7 @@ class Predictor:
         self.normalization_ranges = normalization_ranges
         if not predictor_names:
             raise ValueError("no predictor names specified, invalid configuration")
-        self.predictor_names = predictor_names
+        self.predictor_names = [f"nn_trained_on_{item}" for item in predictor_names]
         weights = torch.load(weights_path)
         self.model.load_state_dict(weights["model_state_dict"])
         self.model.eval()
