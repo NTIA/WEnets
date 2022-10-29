@@ -1,0 +1,21 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  syslog:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: syslog
+    level: DEBUG
+    stream: ext://sys.stdout
+  # file:
+  #   class: logging.FileHandler
+  #   formatter: syslog
+  #   level: DEBUG
+  #   filename: logs/wawenet.log
+
+root:
+  level: DEBUG
+  handlers: [console]

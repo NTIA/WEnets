@@ -3,11 +3,11 @@ import tempfile
 
 from pathlib import Path
 from typing import Any, Dict, Tuple
-from xmlrpc.client import Boolean
 
 import torch
 import torchaudio
 
+from wawenets.generic_logger import construct_logger
 from wawenets.stl_wrapper import LevelMeter, Resampler, SoxConverter, SpeechNormalizer
 
 # handle reading data/etc. here
@@ -101,6 +101,8 @@ class WavHandler:
         self.resampled_frames = None
         # transforms
         self.compensator: NormalizationCompensator = None
+        # loggggggg
+        self.logger = construct_logger(self.__class__.__name__)
 
     def __enter__(self):
         # set up temp dir and intermediate file paths
@@ -116,6 +118,9 @@ class WavHandler:
         metadata = torchaudio.info(self.input_path)
         self.sample_rate = metadata.sample_rate
         self.duration = metadata.num_frames / self.sample_rate
+
+        # warn about sample rate conversion if we need to
+        self._warn_sample_rate()
 
         # grab the channel we're supposed to be working on
         self.converter.select_channel(self.input_path, self.downmixed_wav, self.channel)
@@ -145,6 +150,15 @@ class WavHandler:
     def _copy_file(self, input_path: Path, output_path: Path):
         shutil.copy(input_path, output_path)
         return True
+
+    def _warn_sample_rate(self):
+        if self.sample_rate != 16000:
+            resample_warning = (
+                f"native sample rate: {self.sample_rate}: "
+                "when using the Python WAWEnet implementation to resample input data, accuracy "
+                "decreases"
+            )
+            self.logger.warn(resample_warning)
 
     def resample_raw(self, input_path: Path, output_path: Path, input_sample_rate: int):
         """resamples an input file to 16 kHz. returns true if successful."""
