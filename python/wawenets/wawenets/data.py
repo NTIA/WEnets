@@ -2,7 +2,8 @@ import shutil
 import tempfile
 
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
+from xmlrpc.client import Boolean
 
 import torch
 import torchaudio
@@ -18,7 +19,7 @@ class RightPadSampleTensor:
     def __init__(self, final_length):
         self.final_length = final_length
 
-    def __call__(self, sample):
+    def __call__(self, sample: Dict[str, Any]):
         # calculate how much to pad
         num_samples = sample["sample_data"].shape[1]
         pad_length = self.final_length - num_samples
@@ -32,6 +33,29 @@ class RightPadSampleTensor:
         padder = torch.nn.ConstantPad1d((0, pad_length), 0)
         # TODO: doublecheck below after all these changes
         sample["sample_data"] = padder(sample["sample_data"])
+        return sample
+
+
+class NormalizationCompensator:
+    """there are small differences between the ITU normalization process and
+    what is implemented in the MATLAB/C++ code. this attempts to compensate
+    for those differences."""
+
+    correction_factors = {
+        48000: 8388608 / 8436450,
+        32000: 8388608 / 8359694,
+        24000: (8388608 / 8359694) * 8388608 / 8436450,
+        16000: 1,
+        8000: 8388608 / 8359694,
+    }
+
+    def __init__(self, input_sample_rate: int, perform_normalization: bool) -> None:
+        self.factor = self.correction_factors[input_sample_rate]
+        self.perform_normalization = perform_normalization
+
+    def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        if self.perform_normalization:
+            sample["sample_data"] = self.factor * sample["sample_data"]
         return sample
 
 
@@ -75,6 +99,8 @@ class WavHandler:
         self.duration = None
         self.segment_step_size = None
         self.resampled_frames = None
+        # transforms
+        self.compensator: NormalizationCompensator = None
 
     def __enter__(self):
         # set up temp dir and intermediate file paths
@@ -105,6 +131,11 @@ class WavHandler:
         )
         metadata = torchaudio.info(self.resampled_wav)
         self.resampled_frames = metadata.num_frames
+
+        # set up pytorch transform to do a little normalization compensation
+        self.compensator = NormalizationCompensator(
+            self.sample_rate, self.level_normalization
+        )
 
         return self
 
@@ -193,10 +224,16 @@ class WavHandler:
         active_level, speech_activity = self.level_meter.measure(normalized_raw)
         sample, sample_rate = self.load_wav(normalized_wav)
         pad_length = self.calculate_pad_length(sample.shape[1])
+
+        # set up a pytorch-style transform—figure out how to init this in __init__
         padder = RightPadSampleTensor(pad_length)
 
+        # apply our transforms
         sample = {"sample_data": sample}
         sample = padder(sample)
+        sample = self.compensator(sample)
+
+        # send some metadata along for the ride
         sample["active_level"] = active_level
         sample["speech_activity"] = speech_activity
 
