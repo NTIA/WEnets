@@ -9,6 +9,8 @@ import sox
 
 import numpy as np
 
+from wawenets.generic_logger import construct_logger
+
 
 class FileWalker:
     def __init__(self):
@@ -26,7 +28,8 @@ class SoxConverter:
     raw = ".raw"
 
     def __init__(self):
-        pass
+        # loggggggg
+        self.logger = construct_logger(self.__class__.__name__)
 
     def _convert(self, input_path: Path, output_path: Path, sample_rate: int = None):
         """assumes input path is a one-channel audio file"""
@@ -47,8 +50,8 @@ class SoxConverter:
             )
         status = convert_transformer.build(**kwargs)
         if status[0]:
-            print(f"stdout: {status[1]}")
-            print(f"stderr: {status[2]}")
+            self.logger.warn(f"stdout: {status[1]}")
+            self.logger.warn(f"stderr: {status[2]}")
 
     def _validate_extension(self, file_path: Path, file_type: str):
         if not file_path.suffix == file_type:
@@ -80,8 +83,8 @@ class SoxConverter:
         )
         status = trim_transformer.build(**kwargs)
         if status[0]:
-            print(f"stdout: {status[1]}")
-            print(f"stderr: {status[2]}")
+            self.logger.warn(f"stdout: {status[1]}")
+            self.logger.warn(f"stderr: {status[2]}")
 
     def wav_to_pcm(self, wav_path: Path, pcm_path: Path):
         valid_wav = self._validate_extension(wav_path, self.wav)
