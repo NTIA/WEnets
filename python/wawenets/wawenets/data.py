@@ -1,4 +1,3 @@
-import shutil
 import tempfile
 
 from pathlib import Path
@@ -147,33 +146,19 @@ class WavHandler:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.temp_dir.cleanup()
 
-    def _copy_file(self, input_path: Path, output_path: Path):
-        shutil.copy(input_path, output_path)
-        return True
-
     def _warn_sample_rate(self):
         if self.sample_rate != 16000:
             resample_warning = (
                 f"native sample rate: {self.sample_rate}: "
-                "when using the Python WAWEnet implementation to resample input data, accuracy "
-                "decreases"
+                "when using the Python WAWEnet implementation to resample input data, "
+                "accuracy decreases"
             )
             self.logger.warn(resample_warning)
 
-    def resample_raw(self, input_path: Path, output_path: Path, input_sample_rate: int):
-        """resamples an input file to 16 kHz. returns true if successful."""
-        resampler_map = {
-            48000: self.resampler.down_48k_to_16k,
-            32000: self.resampler.down_32k_to_16k,
-            24000: self.resampler.down_24k_to_16k,
-            16000: self._copy_file,  # a little wasteful
-            8000: self.resampler.up_8k_to_16k,
-        }
-
-        return resampler_map[input_sample_rate](input_path, output_path)
-
     def resample(self):
-        if not self.resample_raw(self.input_raw, self.resampled_raw, self.sample_rate):
+        if not self.resampler.resample_raw(
+            self.input_raw, self.resampled_raw, self.sample_rate
+        ):
             raise RuntimeError(f"unable to resample {self.input_path}")
 
     def normalize_raw(self, input_raw: Path, normalized_raw: Path):

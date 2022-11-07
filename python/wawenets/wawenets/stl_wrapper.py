@@ -1,14 +1,17 @@
-import tempfile
+import shutil
 import subprocess
 import sys
+import tempfile
 
 from pathlib import Path
 from typing import Tuple
 
+import click
 import sox
 
 import numpy as np
 
+from wawenets import get_stl_path
 from wawenets.generic_logger import construct_logger
 
 
@@ -198,6 +201,17 @@ class Resampler(Processor):
     def __init__(self, path_to_filter: Path) -> None:
         super().__init__()
         self.filter_path = str(path_to_filter)
+        self.resampler_map = {
+            48000: self.down_48k_to_16k,
+            32000: self.down_32k_to_16k,
+            24000: self.down_24k_to_16k,
+            16000: self._copy_file,  # a little wasteful
+            8000: self.up_8k_to_16k,
+        }
+
+    def _copy_file(self, input_path: Path, output_path: Path):
+        shutil.copy(input_path, output_path)
+        return True
 
     def _call_filter(
         self, command: list, target_ratio: float, in_path: Path, out_path: Path
@@ -265,6 +279,11 @@ class Resampler(Processor):
         ]
 
         return self._call_filter(command, target_ratio, in_path, out_path)
+
+    def resample_raw(self, input_path: Path, output_path: Path, input_sample_rate: int):
+        """resamples an input file to 16 kHz. returns true if successful."""
+
+        return self.resampler_map[input_sample_rate](input_path, output_path)
 
 
 class LevelMeter(Processor):
@@ -433,3 +452,45 @@ class SpeechNormalizer(Processor):
 
         # because we can't naively check `stderr`, let's naively calculate size ratio
         return self._check_filesize_ratio(in_path, out_path, target_ratio)
+
+
+@click.command()
+@click.argument("infile", type=click.Path(exists=True))
+@click.argument("outfile", type=click.Path())
+@click.argument("inrate", type=click.INT)
+def resample(infile, outfile, inrate):
+    """
+    1. convert to raw
+    2. resample
+    3. convert to wav
+    4. copy to outfile
+    """
+    infile = Path(infile)
+    outfile = Path(outfile)
+
+    # read some config
+    stl_path = Path(get_stl_path())
+
+    # build our resampler and sox converter
+    resampler = Resampler(stl_path / "filter")
+    converter = SoxConverter()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        # 1. convert to raw
+        in_raw_path = temp_path / f"{infile.stem}.raw"
+        converter.wav_to_pcm(infile, in_raw_path)
+        # 2. resample
+        resampled_raw_path = temp_path / f"{infile.stem}_16000.raw"
+        success = resampler.resample_raw(in_raw_path, resampled_raw_path, inrate)
+        if not success:
+            RuntimeError(f"failed resampling {infile}")
+        # 3. convert to wav
+        resampled_wav_path = temp_path / f"{infile.stem}_16000.wav"
+        converter.pcm_to_wav(resampled_raw_path, resampled_wav_path, 16000)
+        # 4. copy to outfile
+        resampler._copy_file(resampled_wav_path, outfile)
+
+
+if __name__ == "__main__":
+    resample()

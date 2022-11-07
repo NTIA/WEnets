@@ -1,4 +1,8 @@
+import os
+import yaml
+
 from collections import OrderedDict
+from pathlib import Path
 from pkg_resources import resource_filename
 
 __version__ = "0.1.0"
@@ -74,3 +78,18 @@ modeselektor = {
         "predictor_names": list(normalization_ranges.keys()),
     },
 }
+
+
+def get_stl_path():
+    """returns the path to the STL bin dir based on the contents of
+    config.yaml"""
+    current_path = Path(os.path.realpath(__file__))
+    config_path = current_path.parent.parent / "config.yaml"
+    if not config_path.is_file():
+        raise FileNotFoundError(
+            f"unable to find `config.yaml` in {config_path}. please follow the setup "
+            "instructions in README.md to create `config.yaml"
+        )
+    with open(config_path) as yaml_fp:
+        config = yaml.safe_load(yaml_fp)
+    return config["StlBinPath"]

@@ -1,11 +1,8 @@
-import os
-import yaml
-
 from pathlib import Path
 
 import click
 
-from wawenets import modeselektor
+from wawenets import get_stl_path, modeselektor
 from wawenets.data import WavHandler
 from wawenets.inference import Predictor
 from wawenets.postprocess import PostProcessor
@@ -18,21 +15,6 @@ from wawenets.postprocess import PostProcessor
 # 2. prepare data
 # 3. call the model in a smart way
 # 5. print out the results
-
-
-def get_stl_path():
-    """returns the path to the STL bin dir based on the contents of
-    config.yaml"""
-    current_path = Path(os.path.realpath(__file__))
-    config_path = current_path.parent / "config.yaml"
-    if not config_path.is_file():
-        raise FileNotFoundError(
-            f"unable to find `config.yaml` in {config_path}. please follow the setup "
-            "instructions in README.md to create `config.yaml"
-        )
-    with open(config_path) as yaml_fp:
-        config = yaml.safe_load(yaml_fp)
-    return config["StlBinPath"]
 
 
 def read_text_file(file_path: Path) -> list:
