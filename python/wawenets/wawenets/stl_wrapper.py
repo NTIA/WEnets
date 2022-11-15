@@ -89,6 +89,34 @@ class SoxConverter:
             self.logger.warn(f"stdout: {status[1]}")
             self.logger.warn(f"stderr: {status[2]}")
 
+    def _pad_raw(
+        self,
+        input_path: Path,
+        output_path: Path,
+        start_pad: float = 0.0,
+        end_pad: float = 0.0,
+        sample_rate: int = 16000,
+    ):
+        """start_pad and end_pad in seconds only, unfortunately"""
+        pad_transformer = sox.Transformer()
+        pad_transformer.pad(start_duration=start_pad, end_duration=end_pad)
+        pad_transformer.set_input_format(
+            file_type="raw",
+            rate=sample_rate,
+            bits=16,
+            channels=1,
+            encoding="signed-integer",
+        )
+        kwargs = dict(
+            input_filepath=str(input_path),
+            output_filepath=str(output_path),
+            return_output=True,
+        )
+        status = pad_transformer.build(**kwargs)
+        if status[0]:
+            self.logger.warn(f"stdout: {status[1]}")
+            self.logger.warn(f"stderr: {status[2]}")
+
     def wav_to_pcm(self, wav_path: Path, pcm_path: Path):
         valid_wav = self._validate_extension(wav_path, self.wav)
         valid_pcm = self._validate_extension(pcm_path, self.raw)
@@ -127,10 +155,28 @@ class SoxConverter:
     def trim_pcm(
         self, input_path: Path, output_path: Path, start_time: float, end_time: float
     ):
+        # to trim only from the start of the file, specify None for `end time`
         valid_pcm_input = self._validate_extension(input_path, self.raw)
         valid_pcm_output = self._validate_extension(output_path, self.raw)
         if valid_pcm_input and valid_pcm_output:
             self._trim_raw(input_path, output_path, start_time, end_time)
+        else:
+            raise ValueError(
+                f"valid input name: {valid_pcm_input}:\n {input_path}\n"
+                f"valid output name: {valid_pcm_output}:\n {output_path}"
+            )
+
+    def pad_pcm(
+        self,
+        input_path: Path,
+        output_path: Path,
+        start_pad: float = 0.0,
+        end_pad: float = 0.0,
+    ):
+        valid_pcm_input = self._validate_extension(input_path, self.raw)
+        valid_pcm_output = self._validate_extension(output_path, self.raw)
+        if valid_pcm_input and valid_pcm_output:
+            self._pad_raw(input_path, output_path, start_pad, end_pad)
         else:
             raise ValueError(
                 f"valid input name: {valid_pcm_input}:\n {input_path}\n"
@@ -198,6 +244,19 @@ class Processor:
 
 
 class Resampler(Processor):
+    """8 ->16: 59 samples
+    24->16: 48 samples
+    32->16: 29 samples
+    48->16: 28 samples"""
+
+    pad_seconds = {
+        48000: 28 / 16000,
+        32000: 29 / 16000,
+        24000: 48 / 16000,
+        16000: 0 / 16000,
+        8000: 59 / 16000,
+    }
+
     def __init__(self, path_to_filter: Path) -> None:
         super().__init__()
         self.filter_path = str(path_to_filter)
@@ -208,6 +267,7 @@ class Resampler(Processor):
             16000: self._copy_file,  # a little wasteful
             8000: self.up_8k_to_16k,
         }
+        self.sox_converter = SoxConverter()
 
     def _copy_file(self, input_path: Path, output_path: Path):
         shutil.copy(input_path, output_path)
@@ -282,8 +342,37 @@ class Resampler(Processor):
 
     def resample_raw(self, input_path: Path, output_path: Path, input_sample_rate: int):
         """resamples an input file to 16 kHz. returns true if successful."""
+        """
+        stl sample delays:
+        8 ->16: 59 samples
+        24->16: 48 samples
+        32->16: 29 samples
+        48->16: 28 samples
 
-        return self.resampler_map[input_sample_rate](input_path, output_path)
+        don't totally get why/how they'd all be different.
+        """
+
+        # TODO: zero pad input file, resample, then trim zeros from the front.
+        with tempfile.TemporaryDirectory as temporary:
+            temp_path = Path(temporary.name)
+            padded_path = temp_path / "padded.raw"
+            resampled_path = temp_path / "resampled.raw"
+            pad_success = self.sox_converter.pad_pcm(
+                input_path, padded_path, 0, self.pad_seconds[input_sample_rate]
+            )
+            if not pad_success:
+                raise RuntimeError("intermediary padding failed")
+            resample_success = self.resampler_map[input_sample_rate](
+                padded_path, resampled_path
+            )
+            if not resample_success:
+                raise RuntimeError("intermediary resampling failed")
+            trim_success = self.sox_converter.trim_pcm(
+                resampled_path,
+                output_path,
+                self.pad_seconds[input_sample_rate],
+            )
+        return trim_success
 
 
 class LevelMeter(Processor):
