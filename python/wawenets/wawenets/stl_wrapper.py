@@ -153,13 +153,20 @@ class SoxConverter:
         return status
 
     def trim_pcm(
-        self, input_path: Path, output_path: Path, start_time: float, end_time: float
+        self,
+        input_path: Path,
+        output_path: Path,
+        start_time: float,
+        end_time: float,
+        sample_rate: int = 16000,
     ):
         # to trim only from the start of the file, specify None for `end time`
         valid_pcm_input = self._validate_extension(input_path, self.raw)
         valid_pcm_output = self._validate_extension(output_path, self.raw)
         if valid_pcm_input and valid_pcm_output:
-            self._trim_raw(input_path, output_path, start_time, end_time)
+            self._trim_raw(
+                input_path, output_path, start_time, end_time, sample_rate=sample_rate
+            )
         else:
             raise ValueError(
                 f"valid input name: {valid_pcm_input}:\n {input_path}\n"
@@ -172,11 +179,14 @@ class SoxConverter:
         output_path: Path,
         start_pad: float = 0.0,
         end_pad: float = 0.0,
+        sample_rate: int = 16000,
     ):
         valid_pcm_input = self._validate_extension(input_path, self.raw)
         valid_pcm_output = self._validate_extension(output_path, self.raw)
         if valid_pcm_input and valid_pcm_output:
-            self._pad_raw(input_path, output_path, start_pad, end_pad)
+            self._pad_raw(
+                input_path, output_path, start_pad, end_pad, sample_rate=sample_rate
+            )
         else:
             raise ValueError(
                 f"valid input name: {valid_pcm_input}:\n {input_path}\n"
@@ -249,12 +259,13 @@ class Resampler(Processor):
     32->16: 29 samples
     48->16: 28 samples"""
 
-    pad_seconds = {
+    # have to calculate trim in target sample rate
+    pad_trim_seconds = {
         48000: 28 / 16000,
-        32000: 29 / 16000,
+        32000: 31 / 16000,
         24000: 48 / 16000,
         16000: 0 / 16000,
-        8000: 59 / 16000,
+        8000: 58 / 16000,
     }
 
     def __init__(self, path_to_filter: Path) -> None:
@@ -353,26 +364,30 @@ class Resampler(Processor):
         """
 
         # TODO: zero pad input file, resample, then trim zeros from the front.
-        with tempfile.TemporaryDirectory as temporary:
-            temp_path = Path(temporary.name)
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_path = Path(temporary)
             padded_path = temp_path / "padded.raw"
             resampled_path = temp_path / "resampled.raw"
-            pad_success = self.sox_converter.pad_pcm(
-                input_path, padded_path, 0, self.pad_seconds[input_sample_rate]
+            self.sox_converter.pad_pcm(
+                input_path,
+                padded_path,
+                0,
+                self.pad_trim_seconds[input_sample_rate],
+                input_sample_rate,
             )
-            if not pad_success:
-                raise RuntimeError("intermediary padding failed")
             resample_success = self.resampler_map[input_sample_rate](
                 padded_path, resampled_path
             )
             if not resample_success:
                 raise RuntimeError("intermediary resampling failed")
-            trim_success = self.sox_converter.trim_pcm(
+            # don't need to pass sample rate in here because we're at 16k by now
+            self.sox_converter.trim_pcm(
                 resampled_path,
                 output_path,
-                self.pad_seconds[input_sample_rate],
+                self.pad_trim_seconds[input_sample_rate],
+                None,
             )
-        return trim_success
+        return resample_success
 
 
 class LevelMeter(Processor):
