@@ -1,7 +1,7 @@
 import tempfile
 
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 import torchaudio
@@ -13,12 +13,32 @@ from wawenets.stl_wrapper import LevelMeter, Resampler, SoxConverter, SpeechNorm
 
 
 class RightPadSampleTensor:
-    """zero-pad a segment to a specified length"""
+    """
+    zero-pad a segment to a specified `final_length`
+    """
+
+    # zero-pad a segment to a specified length
 
     def __init__(self, final_length):
         self.final_length = final_length
 
-    def __call__(self, sample: Dict[str, Any]):
+    def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        right pads or truncates the audio sample in `sample["sample_data"]` to
+        `self.final_length`
+
+        Parameters
+        ----------
+        sample : Dict[str, Any]
+            a dictionary containing a key `sample_data` with a torch.Tensor
+            value at minimum
+
+        Returns
+        -------
+        Dict[str, Any]
+            a dictionary containing `sample_data` that has been padded or
+            truncated to `self.final_length`
+        """
         # calculate how much to pad
         num_samples = sample["sample_data"].shape[1]
         pad_length = self.final_length - num_samples
@@ -53,6 +73,22 @@ class NormalizationCompensator:
         self.perform_normalization = perform_normalization
 
     def __call__(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        if requested by `self.perform_normalization`, performs additional
+        normalization
+
+        Parameters
+        ----------
+        sample : Dict[str, Any]
+            a dictionary containing a key `sample_data` with a torch.Tensor
+            value at minimum
+
+        Returns
+        -------
+        Dict[str, Any]
+            a dictionary containing `sample_data` that has been normalized by
+            the tiniest amount
+        """
         if self.perform_normalization:
             sample["sample_data"] = self.factor * sample["sample_data"]
         return sample
@@ -70,6 +106,20 @@ class WavHandler:
         stl_bin_path: str,
         channel: int = 1,
     ) -> None:
+        """
+        init function for WavHandler class.
+
+        Parameters
+        ----------
+        input_path : Path
+            path to an input wav file
+        level_normalization : bool
+            whether or not to normalize input audio to -26 dBov
+        stl_bin_path : str
+            path to the directory containing compiled ITU STL binaries
+        channel : int, optional
+            the channel in the wav file to be used for processing, by default 1
+        """
         self.input_path = input_path
         self.level_normalization = level_normalization
         self.stl_bin_path = Path(stl_bin_path)
@@ -104,6 +154,15 @@ class WavHandler:
         self.logger = construct_logger(self.__class__.__name__)
 
     def __enter__(self):
+        """
+        sets up infrastructure needed to prepare a wav file for inference
+
+        Returns
+        -------
+        WavHandler
+            WavHandler object used to preprocess wav inputs and postprocess
+            inference results
+        """
         # set up temp dir and intermediate file paths
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_dir_path = Path(self.temp_dir.name)
@@ -126,7 +185,7 @@ class WavHandler:
 
         # convert to raw and resample since just about everything depends on that
         self.converter.wav_to_pcm(self.downmixed_wav, self.input_raw)
-        self.resample()
+        self._resample()
 
         # convert to wav and gather some metadata, even though the resampled wav
         # won't be used after this. a little wasteful
@@ -147,6 +206,10 @@ class WavHandler:
         self.temp_dir.cleanup()
 
     def _warn_sample_rate(self):
+        """
+        friendly warning that if you use these tools to resample your audio,
+        accuracy will be affected slightly
+        """
         if self.sample_rate != 16000:
             resample_warning = (
                 f"native sample rate: {self.sample_rate}: "
@@ -155,14 +218,43 @@ class WavHandler:
             )
             self.logger.warn(resample_warning)
 
-    def resample(self):
+    def _resample(self):
+        """
+        resamples an input raw file to `self.sample_rate`
+
+        Raises
+        ------
+        RuntimeError
+            if resampling fails
+        """
         if not self.resampler.resample_raw(
             self.input_raw, self.resampled_raw, self.sample_rate
         ):
             raise RuntimeError(f"unable to resample {self.input_path}")
 
-    def normalize_raw(self, input_raw: Path, normalized_raw: Path):
-        """returns a path to the file that should be used after normalization"""
+    def _normalize_raw(self, input_raw: Path, normalized_raw: Path) -> Path:
+        """
+        returns a path to the file that should be used after normalization
+
+        Parameters
+        ----------
+        input_raw : Path
+            path to the 16k samp/sec PCM input file
+        normalized_raw : Path
+            path to write the result of resampling if required.
+
+        Returns
+        -------
+        Path
+            the path to the resampled PCM file if resampling is required,
+            otherwise, the path to the input PCM file.
+
+        Raises
+        ------
+        RuntimeError
+            if resampling fails.
+        """
+        # returns a path to the file that should be used after normalization
         if self.level_normalization:
             if not self.speech_normalizer.normalizer(input_raw, normalized_raw):
                 raise RuntimeError(f"could not normalize {self.resampled_raw}")
@@ -171,31 +263,89 @@ class WavHandler:
             normalized_raw = input_raw
         return normalized_raw
 
-    def load_wav(self, wav_path: Path) -> Tuple[torch.tensor, int]:
+    def _load_wav(self, wav_path: Path) -> Tuple[torch.tensor, int]:
+        """
+        loads a wav file from disk and normalizes it to [-1, 1]
+
+        Parameters
+        ----------
+        wav_path : Path
+            path to a wav file
+
+        Returns
+        -------
+        Tuple[torch.tensor, int]
+            a tensor containing the normalized audio data, and an integer
+            containing the sample rate of the file.
+        """
         # load to tensor
         audio_data, sample_rate = torchaudio.load(wav_path)
 
         return audio_data, sample_rate
 
-    def calculate_pad_length(self, num_samples: int) -> int:
-        """calculates the number of samples required to facilitate both
+    def _calculate_pad_length(self, num_samples: int) -> int:
+        """
+        calculates the number of padding samples required to facilitate both
         an integer-number of 3-second segments and performing inference on
-        all available data."""
+        all available data.
+
+        Parameters
+        ----------
+        num_samples : int
+            the number of samples available in an audio sample
+
+        Returns
+        -------
+        int
+            the number of samples the audio sample should be padded with
+        """
         three_second_segs = num_samples // self.num_input_samples
         remainder = num_samples % self.num_input_samples
         if remainder:
             three_second_segs += 1
         return three_second_segs * self.num_input_samples
 
-    def calculate_num_segments(self, num_samples: int, stride: int):
+    def _calculate_num_segments(self, num_samples: int, stride: int) -> int:
+        """
+        calculates the number of segments to process given the total number of
+        samples in the audio file and the requested stride
+
+        Parameters
+        ----------
+        num_samples : int
+            total number of samples available in the audio segment
+        stride : int
+            the stride by which neighboring predictions should be separated
+
+        Returns
+        -------
+        int
+            number of segments possible to process
+        """
         return ((num_samples - self.num_input_samples) // stride) + 1
 
-    def calculate_start_stop_times(self, num_samples: int, stride: int):
-        """generates a list of start and stop times based on the number of samples
-        in the file and the specified stride"""
+    def _calculate_start_stop_times(
+        self, num_samples: int, stride: int
+    ) -> List[Tuple[float, float, int]]:
+        """
+        generates a list of start and stop times based on the number of samples
+        in the file and the specified stride
+
+        Parameters
+        ----------
+        num_samples : int
+            total number of samples available in the audio segment
+        stride : int
+            the stride by which neighboring predictions should be separated
+
+        Returns
+        -------
+        Tuple[float, float, int]
+            start time, stop time, and the segment number
+        """
         start = 0
         start_stop_times = list()
-        for seg_number in range(self.calculate_num_segments(num_samples, stride)):
+        for seg_number in range(self._calculate_num_segments(num_samples, stride)):
             stop = start + self.num_input_samples
             start_stop_times.append(
                 (
@@ -207,22 +357,54 @@ class WavHandler:
             start += stride
         return start_stop_times
 
-    def prepare_segment(self, start_time: float, end_time: float, seg_number: int):
+    def prepare_segment(
+        self, start_time: float, end_time: float, seg_number: int
+    ) -> Dict[str, Any]:
+        """
+        prepares a subsegment of an audio file specified by `start_time` and
+        `end_time` for inference
+
+        Parameters
+        ----------
+        start_time : float
+            the time in seconds where the subsegment should begin
+        end_time : float
+            the time in seconds where the subsegment should end
+        seg_number : int
+            the segment number this start and end time represents
+
+        Returns
+        -------
+        Dict[str, Any]
+            a dictionary containing a key `sample_data` with a torch.Tensor
+            value, and "active_level" and "speech_activity" keys
+        """
         # we are using sox to trim because otherwise we'd be manually writing
         # samples to disk and doing a bunch of conversions in order to do the
         # measurements/etc.
+
+        # calculate a path for a trimed PCM file
         trimmed_path = (
             self.resampled_raw.parent
             / f"{self.resampled_raw.stem}_seg_{seg_number}.raw"
         )
+        # trim to start/end time
         self.converter.trim_pcm(self.resampled_raw, trimmed_path, start_time, end_time)
+
+        # normalize segment by segment, just like in the MATLAB/C++ version
         normalized_raw = trimmed_path.parent / f"{trimmed_path.stem}_norm.raw"
-        normalized_raw = self.normalize_raw(trimmed_path, normalized_raw)
+        normalized_raw = self._normalize_raw(trimmed_path, normalized_raw)
+
+        # convert the raw PCM to a wav file so torchaudio can read it
         normalized_wav = normalized_raw.parent / f"{normalized_raw.stem}.wav"
         self.converter.pcm_to_wav(normalized_raw, normalized_wav, 16000)
+
+        # grab some measurements from the raw PCM file
         active_level, speech_activity = self.level_meter.measure(normalized_raw)
-        sample, sample_rate = self.load_wav(normalized_wav)
-        pad_length = self.calculate_pad_length(sample.shape[1])
+
+        # read the file and calculate how much padding is required
+        sample, sample_rate = self._load_wav(normalized_wav)
+        pad_length = self._calculate_pad_length(sample.shape[1])
 
         # set up a pytorch-style transform—figure out how to init this in __init__
         padder = RightPadSampleTensor(pad_length)
@@ -238,9 +420,25 @@ class WavHandler:
 
         return sample
 
-    def prepare_tensor(self, stride) -> torch.tensor:
-        """creates a tensor for input to the model. this is where files that are
-        longer than three seconds are handled."""
+    def prepare_tensor(self, stride: int) -> Tuple[torch.tensor, list, list, list]:
+        """
+        prepares a batch of tensors for inference and packages associated
+        measurements for later use. this is where files that are longer
+        than three seconds are handled.
+
+        Parameters
+        ----------
+        stride : int
+            the stride by which neighboring segments should be separated
+
+        Returns
+        -------
+        Tuple[torch.tensor, list, list, list]
+            a batch tensor containing waveform data from all segments, the
+            measured active speech levels for each segment, the speech activity
+            factor for each segment, and the start and stop times associated
+            with each segment.
+        """
 
         # for each valid segment, we have to:
         # 1. ask sox to write out the correct portion of a file to a new file
@@ -252,23 +450,40 @@ class WavHandler:
         # ----- above items can happen in `prepare_segment`
         # 6. pack the segments into a batch (!)
 
+        # set up our storage data structures
         segments = list()
         active_levels = list()
         speech_activity = list()
-        start_stop_times = self.calculate_start_stop_times(
+
+        # calculate the start and stop times of all subsegments
+        start_stop_times = self._calculate_start_stop_times(
             self.resampled_frames, stride
         )
+
+        # read each subsegment and store measured attributes
         for seg in start_stop_times:
             segment = self.prepare_segment(*seg)
             segments.append(segment["sample_data"])
             active_levels.append(segment["active_level"])
             speech_activity.append(segment["speech_activity"])
 
+        # create a batch so we can send all the segments to the CPU/GPU at once
         batch = torch.cat(segments)
 
         return batch, active_levels, speech_activity, start_stop_times
 
-    def package_metadata(self):
+    def package_metadata(self) -> Dict[str, Any]:
+        """
+        packages metadata having to do with the input wavfile
+
+        Returns
+        -------
+        Dict[str, Any]
+            a dictionary containing information about the path of the input
+            wavfile, the channel that was processed, the sample rate of the
+            wavfile, the duration of the wav file, and whether normalization
+            was performed.
+        """
         return {
             "wavfile": self.input_path,
             "channel": self.channel,

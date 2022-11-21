@@ -1,3 +1,7 @@
+"""
+cli interface for Python WAWEnets implementation
+"""
+
 from pathlib import Path
 
 import click
@@ -7,18 +11,21 @@ from wawenets.data import WavHandler
 from wawenets.inference import Predictor
 from wawenets.postprocess import PostProcessor
 
-# do cli here
-
-# TODO:
-# 1. read CLI args
-# 2. build a model
-# 2. prepare data
-# 3. call the model in a smart way
-# 5. print out the results
-
 
 def read_text_file(file_path: Path) -> list:
-    """reads the lines from the given text file into a list"""
+    """
+    reads the lines from the given text file into a list
+
+    Parameters
+    ----------
+    file_path : Path
+        path to a text file
+
+    Returns
+    -------
+    list
+        contains the lines of the text file, one line per item
+    """
     # hmmm, the text file should probably specify the correct channel to use
     # for each file too, 🤔
     with open(file_path) as fp:
@@ -60,9 +67,9 @@ def read_text_file(file_path: Path) -> list:
     "-s",
     "--stride",
     help=(
-        "stride (in samples) on which to make predictions. default is 48,000, meaning"
-        "if a .wav file is longer than 3 seconds, the model will generate a prediction"
-        "for neighboring 3-second segments."
+        "stride (in samples @16k samp/sec) on which to make predictions. default is"
+        "48,000, meaning if a .wav file is longer than 3 seconds, the model will"
+        "generate a prediction for neighboring 3-second segments."
     ),
     type=click.INT,
     required=False,
@@ -98,8 +105,28 @@ def cli(
     channel: int = 1,
     output: str = None,
 ):
-    """produces quality or intelligibility estimates for specified speech
-    files."""
+    """
+    the CLI interface for produces quality or intelligibility estimates for specified
+    speech files.
+
+    Parameters
+    ----------
+    mode : int, optional
+        the WAWEnet mode that wil be used to process infile, by default 1
+    infile : str, optional
+        a path to either a wav file or a text file containing paths to wav files, by
+        default ""
+    level : bool, optional
+        whether or not to normalize audio input before processing, by default True
+    stride : int, optional
+        stride (in samples @ 16k samp/sec) on which to make predictions, by default
+        48000
+    channel : int, optional
+        the channel to make a prediction on if `infile` has more than one, by default 1
+    output : str, optional
+        path where a result should be written. if None, print to console, by default
+        None
+    """
     # read some config
     stl_path = get_stl_path()
 
@@ -140,6 +167,7 @@ def cli(
             )
             predictions.append(metadata)
 
+    # format and output to selected location
     pp = PostProcessor(predictions)
     pp.export_results(output)
 

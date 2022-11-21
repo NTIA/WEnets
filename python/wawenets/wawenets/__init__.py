@@ -8,6 +8,8 @@ from pkg_resources import resource_filename
 __version__ = "0.1.0"
 
 # TODO: maybe this config-type stuff should live in a yaml somewhere?
+
+# use these ranges to map WAWEnet outputs to prediction-type ranges
 normalization_ranges = OrderedDict(
     {
         "mos": (1, 5),
@@ -24,6 +26,7 @@ normalization_ranges = OrderedDict(
     }
 )
 
+# configuration for all the different WAWEnets
 modeselektor = {
     1: {
         "model_type": "wawenet2020",
@@ -81,8 +84,20 @@ modeselektor = {
 
 
 def get_stl_path():
-    """returns the path to the STL bin dir based on the contents of
-    config.yaml"""
+    """
+    returns the path to the STL bin dir based on the contents of config.yaml
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    FileNotFoundError
+        if `config.yaml` is not found in the expected place
+    """
+    # returns the path to the STL bin dir based on the contents of
+    # config.yaml
     current_path = Path(os.path.realpath(__file__))
     config_path = current_path.parent.parent / "config.yaml"
     if not config_path.is_file():
