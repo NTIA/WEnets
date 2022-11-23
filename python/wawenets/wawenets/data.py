@@ -9,8 +9,6 @@ import torchaudio
 from wawenets.generic_logger import construct_logger
 from wawenets.stl_wrapper import LevelMeter, Resampler, SoxConverter, SpeechNormalizer
 
-# handle reading data/etc. here
-
 
 class RightPadSampleTensor:
     """

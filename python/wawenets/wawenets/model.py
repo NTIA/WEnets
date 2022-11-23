@@ -1,9 +1,7 @@
-from typing import Tuple
+from typing import List, Tuple
 
-
+import torch
 import torch.nn as nn
-
-# handle model stuff here
 
 
 def conv_section(
@@ -13,7 +11,37 @@ def conv_section(
     pool_kernel_size: int,
     pool_method: str,
     first_section: bool = False,
-):
+) -> List[nn.Module]:
+    """
+    creates a WAWEnet-style model "section" containing a convolution, a
+    batchnorm, an activation function, and a pooling layer.
+
+    Parameters
+    ----------
+    channels : int
+        the number of channels the convolution section should have
+    pad_spec : Tuple[int, int]
+        the amount to pad the beginning and end of the audio tensor
+    activation : str
+        the type of activation function to use, either "relu" or "prelu"
+    pool_kernel_size : int
+        the size of the pooling kernel
+    pool_method : str
+        the pooling method to be used, either "avg" or "max"
+    first_section : bool, optional
+        whether or not this is the first section in the model. if true, the
+        number of input channels is set to 1, by default False
+
+    Returns
+    -------
+    List[nn.Module]
+        a list of PyTorch modules, suitable for input to `nn.Sequential`
+
+    Raises
+    ------
+    ValueError
+        if an unsupported pooling or activation function is specified.
+    """
     # set activation function for this section
     if activation == "prelu":
         activation_function = nn.PReLU(channels)
@@ -49,7 +77,26 @@ def conv_section(
     return layers
 
 
-def create_features(channels, features_spec) -> nn.Sequential:
+def create_features(
+    channels: int, features_spec: List[Tuple[tuple, str, int, str]]
+) -> nn.Sequential:
+    """
+    creates the feature extractor for a WAWEnet model.
+
+    Parameters
+    ----------
+    channels : int
+        the number of channels each convolutional layer should use
+    features_spec : List[Tuple[tuple, str, int, str]]
+        a list of tuples containing the configuration for each section. the
+        expected format for each tuple is:
+        ((pad_start, pad_end), "activation", pool_kernel_size, "pool_type")
+
+    Returns
+    -------
+    nn.Sequential
+        a WAWEnet feature extractor
+    """
     modules = list()
     # first section is a special case
     modules.extend(conv_section(channels, *features_spec[0], first_section=True))
@@ -59,6 +106,12 @@ def create_features(channels, features_spec) -> nn.Sequential:
 
 
 class WAWEnetICASSP2020(nn.Module):
+    """
+    generates a WAWEnet-style model like the one reported in "WAWEnets: A
+    No-Reference Convolutional Waveform-Based Approach to Estimating Narrowband
+    and Wideband Speech Quality", published at ICASSP 2020
+    """
+
     features_spec = [
         ((0, 0), "prelu", 2, "avg"),
         ((0, 0), "prelu", 4, "max"),
@@ -72,6 +125,17 @@ class WAWEnetICASSP2020(nn.Module):
     ]
 
     def __init__(self, *args, num_targets: int = 1, channels: int = 96, **kwargs):
+        """
+        initializes a WAWEnet by creating the feature extractor and mapper.
+
+        Parameters
+        ----------
+        num_targets : int, optional
+            the number of targets to be predicted by the WAWEnet, by default 1
+        channels : int, optional
+            the number of channels each convolutional layer should use, by
+            default 96
+        """
         super().__init__(*args, **kwargs)
         self.channels = channels
         self.features = create_features(channels, self.features_spec)
@@ -81,13 +145,32 @@ class WAWEnetICASSP2020(nn.Module):
         )
         self._initialize_weights()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        performs inference on `x`
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            audio input data normalized to [-1, 1] with dimensions
+            [batch, 1, 48,000]
+
+        Returns
+        -------
+        torch.Tensor
+            WAWEnet predictions with dimention
+            [batch, num_targets]
+        """
         x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.mapper(x)
         return x
 
     def _initialize_weights(self):
+        """
+        initializes weights in the WAWEnet model using the Kaiming normal
+        method
+        """
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(
@@ -104,6 +187,12 @@ class WAWEnetICASSP2020(nn.Module):
 
 
 class WAWEnet2020(nn.Module):
+    """
+    generates a WAWEnet-style model like the one reported in "Wideband
+    Audio Waveform Evaluation Networks: Efficient, Accurate Estimation
+    of Speech Qualities", published on arXiv: https://arxiv.org/abs/2206.13272
+    """
+
     features_spec = [
         # 48,000 samples
         # filter size ~= 0.188 ms, equiv sample rate = 16000 hz, or 0.0625 ms
@@ -148,6 +237,17 @@ class WAWEnet2020(nn.Module):
     ]
 
     def __init__(self, *args, num_targets: int = 1, channels: int = 96, **kwargs):
+        """
+        initializes a WAWEnet by creating the feature extractor and mapper.
+
+        Parameters
+        ----------
+        num_targets : int, optional
+            the number of targets to be predicted by the WAWEnet, by default 1
+        channels : int, optional
+            the number of channels each convolutional layer should use, by
+            default 96
+        """
         super().__init__()
         self.channels = channels
         self.features = create_features(channels, self.features_spec)
@@ -157,13 +257,32 @@ class WAWEnet2020(nn.Module):
         )
         self._initialize_weights()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        performs inference on `x`
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            audio input data normalized to [-1, 1] with dimensions
+            [batch, 1, 48,000]
+
+        Returns
+        -------
+        torch.Tensor
+            WAWEnet predictions with dimention
+            [batch, num_targets]
+        """
         x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.mapper(x)
         return x
 
     def _initialize_weights(self):
+        """
+        initializes weights in the WAWEnet model using the Kaiming normal
+        method
+        """
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(

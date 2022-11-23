@@ -110,20 +110,33 @@ def cli(
     speech files.
 
     Parameters
+
     ----------
+
     mode : int, optional
+
         the WAWEnet mode that wil be used to process infile, by default 1
+
     infile : str, optional
+
         a path to either a wav file or a text file containing paths to wav files, by
         default ""
+
     level : bool, optional
+
         whether or not to normalize audio input before processing, by default True
+
     stride : int, optional
+
         stride (in samples @ 16k samp/sec) on which to make predictions, by default
         48000
+
     channel : int, optional
+
         the channel to make a prediction on if `infile` has more than one, by default 1
+
     output : str, optional
+
         path where a result should be written. if None, print to console, by default
         None
     """

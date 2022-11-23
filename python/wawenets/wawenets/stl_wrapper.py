@@ -4,7 +4,7 @@ import sys
 import tempfile
 
 from pathlib import Path
-from typing import Tuple
+from typing import Iterator, List, Tuple
 
 import click
 import sox
@@ -13,17 +13,6 @@ import numpy as np
 
 from wawenets import get_stl_path
 from wawenets.generic_logger import construct_logger
-
-
-class FileWalker:
-    def __init__(self):
-        pass
-
-    def get_subdirectories(self, directory: Path):
-        return [item for item in directory.iterdir() if item.is_dir()]
-
-    def get_files_with(self, directory: Path, match: str):
-        return directory.glob(f"*{match}")
 
 
 class SoxConverter:
