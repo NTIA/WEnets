@@ -1,13 +1,10 @@
-import os
 import pytest
-import yaml
 
-from pathlib import Path
 from pkg_resources import resource_filename
 
 import torch
 
-
+from wawenets import get_stl_path
 from wawenets.data import RightPadSampleTensor, WavHandler
 
 
@@ -18,11 +15,7 @@ def test_wav():
 
 @pytest.fixture
 def stl_path():
-    test_path = Path(os.path.realpath(__file__))
-    config_path = test_path.parent.parent / "config.yaml"
-    with open(config_path) as yaml_fp:
-        config = yaml.safe_load(yaml_fp)
-    return config["StlBinPath"]
+    return get_stl_path()
 
 
 @pytest.fixture

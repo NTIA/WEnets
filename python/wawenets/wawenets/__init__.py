@@ -83,21 +83,20 @@ modeselektor = {
 }
 
 
-def get_stl_path():
+def get_stl_path() -> str:
     """
     returns the path to the STL bin dir based on the contents of config.yaml
 
     Returns
     -------
-    None
+    str
+        path to the location of `config.yaml` as a string
 
     Raises
     ------
     FileNotFoundError
         if `config.yaml` is not found in the expected place
     """
-    # returns the path to the STL bin dir based on the contents of
-    # config.yaml
     current_path = Path(os.path.realpath(__file__))
     config_path = current_path.parent.parent / "config" / "config.yaml"
     if not config_path.is_file():
