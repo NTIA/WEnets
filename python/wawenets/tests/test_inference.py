@@ -37,7 +37,9 @@ class TestPredictor:
                 start_stop_times,
             ) = wh.prepare_tensor(stride=48000)
             result = predictor.predict(prepared_batch)
-            assert np.isclose(result[0]["nn_trained_on_PESQMOSLQO"], 4.189448197185993)
+            assert np.isclose(
+                result[0]["nn_trained_on_PESQMOSLQO"], 4.189448197185993, rtol=1e-3
+            )
             assert np.isclose(active_levels[0], -26.001)
             assert np.isclose(speech_activities[0], 49.96)
             assert start_stop_times == [(0.0, 3.0, 0)]
