@@ -99,7 +99,7 @@ def get_stl_path():
     # returns the path to the STL bin dir based on the contents of
     # config.yaml
     current_path = Path(os.path.realpath(__file__))
-    config_path = current_path.parent.parent / "config.yaml"
+    config_path = current_path.parent.parent / "config" / "config.yaml"
     if not config_path.is_file():
         raise FileNotFoundError(
             f"unable to find `config.yaml` in {config_path}. please follow the setup "

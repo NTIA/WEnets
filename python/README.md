@@ -60,7 +60,7 @@ After the build procedure is complete, return to the WAWEnets Python implementat
 Create a copy of `config.yaml.template` named `config.yaml`:
 
 ```shell
-cp config.yaml.template config.yaml
+cp wawenets/config/config.yaml.template wawenets/config/config.yaml
 ```
 
 Edit `config.yaml` to point to the `bin` dir where the STL tools have been compiled, e.g. `/path/to/STL/bin`.
@@ -89,7 +89,7 @@ pytest
 After successfully completing the above steps, it should be possible to run the following command:
 
 ```shell
-python wawenets/wawenets_cli.py --help
+python wawenets_cli.py --help
 ```
 
 and see its output:

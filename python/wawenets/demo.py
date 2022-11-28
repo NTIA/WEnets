@@ -44,7 +44,7 @@ print(
 print("*****************************************************************")
 # One .wav file
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000439_Q231_D401.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000439_Q231_D401.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -54,12 +54,12 @@ print(
 
 print("*****************************************************************")
 # list of 10 .wav files, results to screen
-std_out, _ = call_command(["python", "wawenets.py", "-i", "list.txt"])
+std_out, _ = call_command(["python", "wawenets_cli.py", "-i", "list.txt"])
 print(std_out.decode())
 
 # list of 10 .wav files, results to screen and myText.txt
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "list.txt", "-o", "myText.txt"]
+    ["python", "wawenets_cli.py", "-i", "list.txt", "-o", "myText.txt"]
 )
 print(std_out.decode())
 
@@ -108,7 +108,7 @@ print("*****************************************************************")
 std_out, _ = call_command(
     [
         "python",
-        "wawenets.py",
+        "wawenets_cli.py",
         "-i",
         "../../speech/long.wav",
         "-m",
@@ -133,7 +133,7 @@ print("*****************************************************************")
 std_out, _ = call_command(
     [
         "python",
-        "wawenets.py",
+        "wawenets_cli.py",
         "-i",
         "../../speech/long_silence.wav",
         "-m",
@@ -156,7 +156,7 @@ print("*****************************************************************")
 # channel 1 of .wav file explicitly selected
 # This channel is identical to ../speech/T000053_Q159_D401.wav
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/TwoChannel_53_93.wav", "-c", "1"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/TwoChannel_53_93.wav", "-c", "1"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -169,7 +169,7 @@ print("*****************************************************************")
 # channel 2 of .wav file explicitly selected
 # This channel is identical to ../speech/T000093_Q446_D401.wav
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/TwoChannel_53_93.wav", "-c", "2"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/TwoChannel_53_93.wav", "-c", "2"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -181,7 +181,7 @@ print(
 print("*****************************************************************")
 # One .wav file, sample rate 8k results to screen only
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401_8.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401_8.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -193,7 +193,7 @@ print(
 print("*****************************************************************")
 # One .wav file, sample rate 16k results to screen only
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -205,7 +205,7 @@ print(
 print("*****************************************************************")
 # One .wav file, sample rate 24k results to screen only
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401_24.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401_24.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -217,7 +217,7 @@ print(
 print("*****************************************************************")
 # One .wav file, sample rate 32k results to screen only
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401_32.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401_32.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -229,7 +229,7 @@ print(
 print("*****************************************************************")
 # One .wav file, sample rate 48k results to screen only
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401_48.wav"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401_48.wav"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -241,7 +241,7 @@ print(
 print("*****************************************************************")
 # One .wav file, mode 1
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "1"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "1"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -253,7 +253,7 @@ print(
 print("*****************************************************************")
 # One .wav file, mode 2
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "2"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "2"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -265,7 +265,7 @@ print(
 print("*****************************************************************")
 # One .wav file, mode 3
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "3"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "3"]
 )
 print(std_out.decode())
 print("result should be: ")
@@ -277,7 +277,7 @@ print(
 print("*****************************************************************")
 # One .wav file, mode 4
 std_out, _ = call_command(
-    ["python", "wawenets.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "4"]
+    ["python", "wawenets_cli.py", "-i", "../../speech/T000863_Q316_D401.wav", "-m", "4"]
 )
 print(std_out.decode())
 print("result should be: ")
