@@ -37,7 +37,7 @@ def read_text_file(file_path: Path) -> list:
 @click.option(
     "-m",
     "--mode",
-    help="specifies a WAWEnet mode.",
+    help="specifies a WAWEnet mode, default is 1",
     required=False,
     type=click.INT,
     default="1",
@@ -46,7 +46,7 @@ def read_text_file(file_path: Path) -> list:
     "-i",
     "--infile",
     help=(
-        "either a .wav file or a .txt file where each line specifies a suitable .wav"
+        "either a .wav file or a .txt file where each line specifies a suitable .wav "
         "file. if the latter, files will be processed in sequence."
     ),
     type=click.STRING,
@@ -67,8 +67,8 @@ def read_text_file(file_path: Path) -> list:
     "-s",
     "--stride",
     help=(
-        "stride (in samples @16k samp/sec) on which to make predictions. default is"
-        "48,000, meaning if a .wav file is longer than 3 seconds, the model will"
+        "stride (in samples @16k samp/sec) on which to make predictions. default is "
+        "48,000, meaning if a .wav file is longer than 3 seconds, the model will "
         "generate a prediction for neighboring 3-second segments."
     ),
     type=click.INT,
@@ -79,7 +79,7 @@ def read_text_file(file_path: Path) -> list:
     "-c",
     "--channel",
     help=(
-        "specifies a channel to use if .wav file has"
+        "specifies a channel to use if .wav file has "
         "multiple channels. default is 1 using indices starting at 1"
     ),
     type=click.INT,
@@ -90,7 +90,7 @@ def read_text_file(file_path: Path) -> list:
     "-o",
     "--output",
     help=(
-        "path where a CSV file containing predictions should be written. default is"
+        "path where a CSV file containing predictions should be written. default is "
         "None, and results are printed to stdout"
     ),
     type=click.STRING,
@@ -106,39 +106,8 @@ def cli(
     output: str = None,
 ):
     """
-    the CLI interface for produces quality or intelligibility estimates for specified
-    speech files.
-
-    Parameters
-
-    ----------
-
-    mode : int, optional
-
-        the WAWEnet mode that wil be used to process infile, by default 1
-
-    infile : str, optional
-
-        a path to either a wav file or a text file containing paths to wav files, by
-        default ""
-
-    level : bool, optional
-
-        whether or not to normalize audio input before processing, by default True
-
-    stride : int, optional
-
-        stride (in samples @ 16k samp/sec) on which to make predictions, by default
-        48000
-
-    channel : int, optional
-
-        the channel to make a prediction on if `infile` has more than one, by default 1
-
-    output : str, optional
-
-        path where a result should be written. if None, print to console, by default
-        None
+    the CLI interface Python WAWEnets. produces quality or intelligibility estimates
+    for specified speech files.
     """
     # read some config
     stl_path = get_stl_path()
