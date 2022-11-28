@@ -8,6 +8,8 @@ dependencies:
   - pyyaml
   - click
   - pip
+  - poetry
+  - pytest
   - pip:
       - sox
       - torch

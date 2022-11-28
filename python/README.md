@@ -77,17 +77,25 @@ conda env create -f wenets_env.yaml
 conda activate wenets_dist
 ```
 
+After the Anaconda environment has been created and activated, execute the following code to install and test the `wawenets` package:
+
+```shell
+cd wawenets
+poetry install
+pytest
+```
+
 # Usage
 After successfully completing the above steps, it should be possible to run the following command:
 
 ```shell
-python wawenets/wawenets.py --help
+python wawenets/wawenets_cli.py --help
 ```
 
 and see its output:
 
 ```shell
-Usage: wawenets.py [OPTIONS]
+Usage: wawenets_cli.py [OPTIONS]
 
   the CLI interface Python WAWEnets. produces quality or intelligibility
   estimates for specified speech files.
