@@ -48,7 +48,6 @@ class RightPadSampleTensor:
             sample["sample_data"] = sample["sample_data"][:, : self.final_length]
             return sample
         padder = torch.nn.ConstantPad1d((0, pad_length), 0)
-        # TODO: doublecheck below after all these changes
         sample["sample_data"] = padder(sample["sample_data"])
         return sample
 
