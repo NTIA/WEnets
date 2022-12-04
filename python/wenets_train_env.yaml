@@ -1,0 +1,21 @@
+name: wenets_dist
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - tqdm
+  - pyyaml
+  - click
+  - pip
+  - poetry
+  - pytest
+  - scipy
+  - scikit-image
+  - pip:
+      - sox
+      - torch
+      - torchvision
+      - torchaudio
+      - pytorch-lightning
+      - pandas
