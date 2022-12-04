@@ -26,7 +26,6 @@ def wav_handler(test_wav, stl_path):
 
 def test_right_pad():
     padder = RightPadSampleTensor(48)
-    # TODO: refactor to remove redundant code
 
     # smaller
     test_tensor = torch.zeros((1, 24))

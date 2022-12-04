@@ -7,7 +7,7 @@ from pkg_resources import resource_filename
 
 __version__ = "0.1.0"
 
-# TODO: maybe this config-type stuff should live in a yaml somewhere?
+# future work: maybe this config-type stuff should live in a yaml somewhere?
 
 # use these ranges to map WAWEnet outputs to prediction-type ranges
 normalization_ranges = OrderedDict(

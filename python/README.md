@@ -3,7 +3,7 @@
 Implements Wideband Audio Waveform Evaluation networks or WAWEnets.
 
 This WAWEnets implementation produces one or more speech quality or intelligibility values for each input speech signal without using reference speech signals.
-WAWEnets are convolutional networks and they have been trained using full-reference objective speech quality and speech intelligibility values.
+WAWEnets are convolutional networks and they have been trained using full-reference objective speech quality and speech intelligibility values as well as subjective scores.
 
 the `.pt` model files in `./wawenets/weights` are plain pytorch model files, and are suitable for creating new traced JIT files for C++ or ONNX in the future.
 
@@ -97,7 +97,7 @@ and see its output:
 ```shell
 Usage: wawenets_cli.py [OPTIONS]
 
-  the CLI interface Python WAWEnets. produces quality or intelligibility
+  the CLI interface Python WAWEnets produces quality or intelligibility
   estimates for specified speech files.
 
 Options:
@@ -147,7 +147,7 @@ To best match the designed scope of WAWEnets, the `.wav` file should have a spee
 - `-l 0`: normalization off
 - `-l 1`: normalization on (Default)
 
-`-s S` specifies specifies the segment step (stride) and is an integer with value 1 or greater.  Default is `-s 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If a `.wav` file is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the vector or file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 sec. will produce one result, based on just the first 3 sec. A 6 sec. input will produce two results. If `-s 24,000` for example, segment overlap will be 50%, a 4.5 sec. input will produce 2 results and a 6 sec. input will produce 3 results.
+`-s S` specifies specifies the segment step (stride) and is an integer with value 1 or greater.  Default is `-s 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If a `.wav` file is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the speech file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 sec. will produce one result, based on just the first 3 sec. A 6 sec. input will produce two results. If `-s 24,000` for example, segment overlap will be 50%, a 4.5 sec. input will produce 2 results and a 6 sec. input will produce 3 results.
 
 `-c C` specifies a channel number to use when the input speech is in a multi-channel `.wav` file. Default is `-c 1`.
 

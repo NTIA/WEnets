@@ -106,7 +106,7 @@ def cli(
     output: str = None,
 ):
     """
-    the CLI interface Python WAWEnets. produces quality or intelligibility estimates
+    the CLI interface Python WAWEnets produces quality or intelligibility estimates
     for specified speech files.
     """
     # read some config

@@ -158,7 +158,7 @@ class WAWEnetICASSP2020(nn.Module):
         Returns
         -------
         torch.Tensor
-            WAWEnet predictions with dimention
+            WAWEnet predictions with dimension
             [batch, num_targets]
         """
         x = self.features(x)
@@ -270,7 +270,7 @@ class WAWEnet2020(nn.Module):
         Returns
         -------
         torch.Tensor
-            WAWEnet predictions with dimention
+            WAWEnet predictions with dimension
             [batch, num_targets]
         """
         x = self.features(x)

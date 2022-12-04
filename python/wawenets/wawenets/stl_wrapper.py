@@ -956,7 +956,7 @@ class LevelMeter(Processor):
 
         # specify start and end blocks if necessary
         if start_sec is not None and end_sec is not None:
-            # TODO: if you specify a block length beyond the length of the
+            # NOTE: if you specify a block length beyond the length of the
             #       file in question, `actlev` will report:
             #       [filename]: Success
             #       in `stderr`
