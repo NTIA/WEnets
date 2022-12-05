@@ -14,6 +14,10 @@ class TestCallbacks(pl.Callback):
     def on_validation_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
+        # TODO: maybe use torch.vstack instead of turning everything into a list?
+        # TODO: make sure tensors don't remain on GPU
+        # TODO: handle denormalization here, since this is where we're doing reporting
+        # TODO: handle reporting by language, impairment here
         self._y, self._y_hat = list(), list()
         return super().on_validation_start(trainer, pl_module)
 
@@ -21,7 +25,7 @@ class TestCallbacks(pl.Callback):
         self,
         trainer: "pl.Trainer",
         pl_module: "pl.LightningModule",
-        outputs: Optional[STEP_OUTPUT],
+        outputs,  #: Optional[STEP_OUTPUT],
         batch: Any,
         batch_idx: int,
         dataloader_idx: int,
@@ -46,7 +50,7 @@ class TestCallbacks(pl.Callback):
         self,
         trainer: "pl.Trainer",
         pl_module: "pl.LightningModule",
-        outputs: Optional[STEP_OUTPUT],
+        outputs,  #: Optional[STEP_OUTPUT],
         batch: Any,
         batch_idx: int,
         dataloader_idx: int,

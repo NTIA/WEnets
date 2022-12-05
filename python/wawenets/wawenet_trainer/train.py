@@ -131,6 +131,8 @@ if __name__ == "__main__":
         task_name="_".join(args.pred_metric) + "_from_script",
         output_uri="/home/whltexbread/ml_results",
     )
+    # TODO: we've gotta pass the task around so we can upload artifacts
+    #       and some reporting too.
 
     normalizers = [
         get_normalizer_class(metric, norm_ind=ind)

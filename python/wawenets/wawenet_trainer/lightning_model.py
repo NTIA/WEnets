@@ -14,6 +14,8 @@ class LitWAWEnetModule(pl.LightningModule):
 
     def __init__(self, learning_rate: float, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self.loss_fn = torch.nn.MSELoss()
+
         # we don't use this directly, but ptl does
         self.learning_rate = learning_rate
 
@@ -119,13 +121,15 @@ class LitWAWEnetModule(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
 
+# TODO: handle loading weights
+# TODO: handle setting certain layers trainable
 class LitWAWEnetICASSP20202(LitWAWEnetModule):
     __version__ = "1.0.0"
 
     def __init__(
         self,
-        *args: Any,
         learning_rate: float,
+        *args: Any,
         num_targets: int = 1,
         channels: int = 96,
         **kwargs: Any,
@@ -144,8 +148,8 @@ class LitWAWEnet2020(LitWAWEnetModule):
 
     def __init__(
         self,
-        *args: Any,
         learning_rate: float,
+        *args: Any,
         num_targets: int = 1,
         channels: int = 96,
         **kwargs: Any,
