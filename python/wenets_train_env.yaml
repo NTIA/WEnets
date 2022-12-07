@@ -1,4 +1,4 @@
-name: wenets_dist
+name: wenets_train
 channels:
   - conda-forge
   - defaults
