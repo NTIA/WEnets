@@ -46,8 +46,8 @@ class NormalizeTarget:
         return self.denormalizer(column_vec, self.norm_arg_2, self.norm_arg_3)
 
 
-class NormalizeNISQA(NormalizeTarget):
-    """normalize NISQA data to the range (-1, 1)."""
+class NormalizeGenericTarget(NormalizeTarget):
+    """normalize target data to the range (-1, 1)."""
 
     MIN = 1
     MAX = 5
@@ -61,37 +61,37 @@ class NormalizeNISQA(NormalizeTarget):
         self.norm_arg_3 = self.MAX
 
 
-class NormalizeNISQAmos(NormalizeNISQA):
+class NormalizeMos(NormalizeGenericTarget):
     """normalize NISQA MOS values to the range (-1, 1)."""
 
     name = "MOS"
 
 
-class NormalizeNISQAnoi(NormalizeNISQA):
+class NormalizeNoi(NormalizeGenericTarget):
     """normalize NISQA noise values to the range (-1, 1)."""
 
     name = "NOI"
 
 
-class NormalizeNISQAcol(NormalizeNISQA):
+class NormalizeCol(NormalizeGenericTarget):
     """normalize NISQA color values to the range (-1, 1)."""
 
     name = "COL"
 
 
-class NormalizeNISQAdis(NormalizeNISQA):
+class NormalizeDis(NormalizeGenericTarget):
     """normalize NISQA discontinuity values to the range (-1, 1)."""
 
     name = "DIS"
 
 
-class NormalizeNISQAloud(NormalizeNISQA):
+class NormalizeLoud(NormalizeGenericTarget):
     """normalize NISQA loudness values to the range (-1, 1)."""
 
     name = "LOUD"
 
 
-class NormalizeNISQAPESQMOSLQO(NormalizeNISQA):
+class NormalizePESQMOSLQO(NormalizeGenericTarget):
     """normalize PESQMOSLQO values to the range (-1, 1)."""
 
     name = "PESQMOSLQO"
@@ -99,7 +99,7 @@ class NormalizeNISQAPESQMOSLQO(NormalizeNISQA):
     MAX = 4.64
 
 
-class NormalizeNISQAPOLQAMOSLQO(NormalizeNISQA):
+class NormalizePOLQAMOSLQO(NormalizeGenericTarget):
     """normalize POLQAMOSLQO values to the range (-1, 1)."""
 
     name = "POLQAMOSLQO"
@@ -107,7 +107,7 @@ class NormalizeNISQAPOLQAMOSLQO(NormalizeNISQA):
     MAX = 4.75
 
 
-class NormalizeNISQAPEMO(NormalizeNISQA):
+class NormalizePEMO(NormalizeGenericTarget):
     """normalize PEMO values to the range (-1, 1)."""
 
     name = "PEMO"
@@ -115,7 +115,7 @@ class NormalizeNISQAPEMO(NormalizeNISQA):
     MAX = 1
 
 
-class NormalizeNISQAViSQOL3_C310(NormalizeNISQA):
+class NormalizeViSQOL3_C310(NormalizeGenericTarget):
     """normalize ViSQOL3_C310 values to the range (-1, 1)."""
 
     name = "ViSQOL3_C310"
@@ -123,7 +123,7 @@ class NormalizeNISQAViSQOL3_C310(NormalizeNISQA):
     MAX = 5
 
 
-class NormalizeNISQASTOI(NormalizeNISQA):
+class NormalizeSTOI(NormalizeGenericTarget):
     """normalize STOI values to the range (-1, 1)."""
 
     name = "STOI"
@@ -131,7 +131,7 @@ class NormalizeNISQASTOI(NormalizeNISQA):
     MAX = 1
 
 
-class NormalizeNISQAESTOI(NormalizeNISQA):
+class NormalizeESTOI(NormalizeGenericTarget):
     """normalize ESTOI values to the range (-1, 1)."""
 
     name = "ESTOI"
@@ -139,7 +139,7 @@ class NormalizeNISQAESTOI(NormalizeNISQA):
     MAX = 1
 
 
-class NormalizeNISQASIIBGauss(NormalizeNISQA):
+class NormalizeSIIBGauss(NormalizeGenericTarget):
     """normalize SIIBGauss values to the range (-1, 1)."""
 
     name = "SIIBGauss"
@@ -147,7 +147,7 @@ class NormalizeNISQASIIBGauss(NormalizeNISQA):
     MAX = 750
 
 
-class NormalizeIUScaledMOS(NormalizeNISQA):
+class NormalizeIUScaledMOS(NormalizeGenericTarget):
     """normalize IU-style MOS to the range ()"""
 
     name = "scaled_mos"
@@ -155,7 +155,7 @@ class NormalizeIUScaledMOS(NormalizeNISQA):
     MAX = 10
 
 
-class NormalizeIUMOS(NormalizeNISQA):
+class NormalizeIUMOS(NormalizeGenericTarget):
     """normalize IU-style MOS to the range ()"""
 
     name = "mos"
@@ -214,3 +214,30 @@ class InvertAudioPhase(object):
     def __call__(self, sample):
         sample["sample_data"] = sample["sample_data"] * -1
         return sample
+
+
+def get_normalizer_class(
+    target, bw: str = "wb", norm_ind: int = 0
+) -> NormalizeGenericTarget:
+    # `norm_ind` is what selects the proper target value when there are multiple
+    # targets
+    # TODO: do we need `bw` anymore?
+    # TODO: is this the right place to put this dict?
+    normalizer_map = {
+        "mos": NormalizeMos,
+        "noi": NormalizeNoi,
+        "col": NormalizeCol,
+        "dis": NormalizeDis,
+        "loud": NormalizeLoud,
+        "PESQMOSLQO": NormalizePESQMOSLQO,
+        "POLQAMOSLQO": NormalizePOLQAMOSLQO,
+        "PEMO": NormalizePEMO,
+        "ViSQOL3_C310": NormalizeViSQOL3_C310,
+        "STOI": NormalizeSTOI,
+        "ESTOI": NormalizeESTOI,
+        "SIIBGauss": NormalizeSIIBGauss,
+        "IUScaledMOS": NormalizeIUScaledMOS,
+        "IUMOS": NormalizeIUMOS,
+    }
+    instance = normalizer_map[target](norm_ind=norm_ind)
+    return instance

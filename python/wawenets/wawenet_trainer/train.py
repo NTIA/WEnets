@@ -9,24 +9,20 @@ import pytorch_lightning as pl
 from torchvision import transforms
 
 from wawenet_trainer.lightning_data import TUBDataModule
-from wawenet_trainer.transforms import AudioToTensor, InvertAudioPhase, NormalizeAudio
+from wawenet_trainer.lightning_model import LitWAWEnetModule
+from wawenet_trainer.transforms import (
+    AudioToTensor,
+    get_normalizer_class,
+    InvertAudioPhase,
+    NormalizeAudio,
+)
 
 # main training script
 
 
-def get_class(class_name, module_name):
-    module = importlib.import_module(module_name)  # "nnate.models")
+def get_class(class_name: str, module_name: str) -> LitWAWEnetModule:
+    module = importlib.import_module(module_name)
     return getattr(module, class_name)
-
-
-def get_normalizer_class(target, bw="wb", norm_ind=0):
-    module = importlib.import_module("nnate.nisqa_infra")
-    prefix = "NormalizeNISQA"
-    # TODO: make dictionary mapping
-    class_name = f"{prefix}{target}"
-    class_class = getattr(module, class_name)
-    instance = class_class(norm_ind=norm_ind)
-    return instance
 
 
 def train(
@@ -118,11 +114,17 @@ def train(
 
     # here starts newer PTL interface, i think
     # grab the model class, IE LitWAWEnet2020
+    # TODO: maybe this level of flexibility is unwarranted—it's a little confusing
+    #       specifying the correct args
     lightning_module = get_class(
         lightning_module_name, "wawenet_trainer.lightning_model"
     )
     model = lightning_module(
-        initial_learning_rate, num_targets=len(pred_metric), channels=channels
+        initial_learning_rate,
+        num_targets=len(pred_metric),
+        channels=channels,
+        unfrozen_layers=unfrozen_layers,
+        weights_path=initial_weights,
     )
 
     # setup callbacks

@@ -163,7 +163,8 @@ class TUBDataset(DFDataset):
         return sample[start_sample:stop_sample]
 
 
-# TODO: clean up TUBDataModule
+# TODO: clean up TUBDataModule:
+#       decouple the dataset from the data module. most of these args should be kwargs.
 class TUBDataModule(LightningDataModule):
     def __init__(
         self,

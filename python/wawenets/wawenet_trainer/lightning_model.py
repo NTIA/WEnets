@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -12,12 +13,34 @@ from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
 class LitWAWEnetModule(pl.LightningModule):
     """parent module"""
 
-    def __init__(self, learning_rate: float, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        learning_rate: float,
+        *args: Any,
+        weights_path: Path = None,
+        unfrozen_layers: int = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.loss_fn = torch.nn.MSELoss()
+        self.model = None
+        self.unfrozen_layers = unfrozen_layers
 
         # we don't use this directly, but ptl does
         self.learning_rate = learning_rate
+        self.example_input_array = torch.zeros((1, 1, 48000))
+
+        # handle loading weights if we need to
+        self.weights = None
+        if weights_path:
+            self.weights = torch.load(weights_path)
+
+    def _freeze_layers(self):
+        # freeze layers if requested
+        if self.unfrozen_layers:
+            all_params = list(self.model.parameters())
+            for params in all_params[: -self.unfrozen_layers]:
+                params.requires_grad = False
 
     def forward(self, batch):
         prediction = self.model(batch)
@@ -121,8 +144,6 @@ class LitWAWEnetModule(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
 
-# TODO: handle loading weights
-# TODO: handle setting certain layers trainable
 class LitWAWEnetICASSP20202(LitWAWEnetModule):
     __version__ = "1.0.0"
 
@@ -139,8 +160,12 @@ class LitWAWEnetICASSP20202(LitWAWEnetModule):
         # load the model
         self.model = WAWEnetICASSP2020(num_targets=num_targets, channels=channels)
 
-        # we don't use this directly, but ptl does
-        self.example_input_array = torch.zeros((1, 1, 48000))
+        # if we've got some model weights
+        if self.weights:
+            self.model.load_state_dict(self.weights)
+
+        # freeze some layers if you wanna do some transfer learning
+        self._freeze_layers()
 
 
 class LitWAWEnet2020(LitWAWEnetModule):
@@ -159,5 +184,9 @@ class LitWAWEnet2020(LitWAWEnetModule):
         # load the model
         self.model = WAWEnet2020(num_targets=num_targets, channels=channels)
 
-        # we don't use this directly, but ptl does
-        self.example_input_array = torch.zeros((1, 1, 48000))
+        # if we've got some model weights
+        if self.weights:
+            self.model.load_state_dict(self.weights)
+
+        # freeze some layers if you wanna do some transfer learning
+        self._freeze_layers()
