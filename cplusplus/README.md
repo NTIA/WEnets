@@ -22,6 +22,8 @@ If you need to cite our work, please use the following:
 }
 ```
 
+[//]: # (TODO: should probably specify a newer libtorch in C++ land.)
+
 # Compiling on Windows® with Visual Studio®
 
 This implementation depends on the Pytorch® C++ library and can be  built using Visual Studio® on Windows. The following steps are required to build the project:

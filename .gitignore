@@ -38,5 +38,14 @@
 #macOS
 .DS_Store
 
+#python
+__pycache__
+
 # external header fiiles
 AudioFile.h
+
+# IDE stuff
+.vscode
+
+# python config stuff
+config.yaml
