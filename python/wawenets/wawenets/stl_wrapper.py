@@ -212,7 +212,7 @@ class SoxConverter:
 
     def pcm_to_wav(self, pcm_path: Path, wav_path: Path, sample_rate: int):
         """
-        converts the file given at `pcm_path` to a .wav file and writes teh result to
+        converts the file given at `pcm_path` to a .wav file and writes the result to
         `wav_path`
 
         Parameters

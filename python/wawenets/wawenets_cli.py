@@ -46,8 +46,10 @@ def read_text_file(file_path: Path) -> list:
     "-i",
     "--infile",
     help=(
-        "either a .wav file or a .txt file where each line specifies a suitable .wav "
-        "file. if the latter, files will be processed in sequence."
+        "either a .wav file or a .txt file where each line specifies the path to a "
+        "suitable .wav file. if the latter, files will be processed in sequence. "
+        "*NOTE:* when using a .txt file to specify which .wav files to process, "
+        "the software will always process the first channel of each file."
     ),
     type=click.STRING,
     required=True,
@@ -80,7 +82,9 @@ def read_text_file(file_path: Path) -> list:
     "--channel",
     help=(
         "specifies a channel to use if .wav file has "
-        "multiple channels. default is 1 using indices starting at 1"
+        "multiple channels. default is 1 using indices starting at 1. "
+        "*NOTE:* when using a .txt file to specify which .wav files to process, the "
+        "software will always process the first channel of each file."
     ),
     type=click.INT,
     required=False,

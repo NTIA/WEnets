@@ -1,16 +1,20 @@
 import pytest
 
-from pkg_resources import resource_filename
-
 import torch
+import torchaudio
 
 from wawenets import get_stl_path
 from wawenets.data import RightPadSampleTensor, WavHandler
 
 
 @pytest.fixture
-def test_wav():
-    return resource_filename("speech", "T000053_Q159_D401_48.wav")
+def test_wav(tmp_path):
+    wav_file = tmp_path / "wav_file.wav"
+    sample_rate = 48000
+    tensor_length = 3 * sample_rate
+    noise_tensor = torch.rand((1, tensor_length))
+    torchaudio.save(wav_file, noise_tensor, sample_rate)
+    return wav_file
 
 
 @pytest.fixture
@@ -45,7 +49,7 @@ def test_right_pad():
 
 class TestWavHandler:
     def test_load_wav(self, wav_handler, test_wav):
-        # this is a stupid test now
+        # i guess this really only tests that torchaudio is installed properly
         result, sample_rate = wav_handler._load_wav(test_wav)
         assert result.shape == (1, 144000)
         assert result.dtype == torch.float32

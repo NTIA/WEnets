@@ -16,3 +16,4 @@ dependencies:
       - torchvision
       - torchaudio
       - pandas
+      - soundfile

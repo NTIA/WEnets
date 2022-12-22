@@ -51,7 +51,7 @@ In order to install SoX on Windows, follow the instructions on the [SoX SourceFo
 ## ITU-T Software Tool Library (STL)
 
 The Python WAWEnets implementation relies on [ITU-T STL](https://github.com/openitu/STL) executables in order to resample audio files and measure speech levels.
-We're using the STL utilities for some functions that are also available in `torchaudio` because this allows us to be reasonably certain that the audio processing steps are the same among all WAWEnets implementations (C++, MATLAB, etc.)
+We're using a few STL utilities (`actlev`, `filter`, and `sv56demo`) for some functions that are also available in `torchaudio` because this allows us to be reasonably certain that the audio processing steps are the same among all WAWEnets implementations (C++, MATLAB, etc.)
 
 First we must compile the STL executables.
 To do this, clone the [STL repo](https://github.com/openitu/STL) and then follow the [build procedure](https://github.com/openitu/STL#build-procedure)
@@ -122,7 +122,7 @@ Options:
 
 ## Arguments
 
-`infile` is either a .wav file or a .txt file where each line specifies a suitable .wav file. In this second case, the listed .wav files will be processed in sequence.
+`infile` is either a .wav file or a .txt file where each line specifies the path to a suitable .wav file. In this second case, the listed .wav files will be processed in sequence. *NOTE:* when using a .txt file to specify which .wav files to process, the software will always process the first channel of each file.
 
 A suitable `.wav` file must:
 
@@ -147,9 +147,9 @@ To best match the designed scope of WAWEnets, the `.wav` file should have a spee
 - `-l 0`: normalization off
 - `-l 1`: normalization on (Default)
 
-`-s S` specifies specifies the segment step (stride) and is an integer with value 1 or greater.  Default is `-s 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If a `.wav` file is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the speech file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 sec. will produce one result, based on just the first 3 sec. A 6 sec. input will produce two results. If `-s 24,000` for example, segment overlap will be 50%, a 4.5 sec. input will produce 2 results and a 6 sec. input will produce 3 results.
+`-s S` specifies specifies the segment step (stride) and is an integer with value 1 or greater.  Default is `-s 48,000`. WAWEnet requires a full 3 seconds of signal to generate a result.  If a `.wav` file is longer than 3 seconds multiple results may be produced. `S` specifies the number of samples to move ahead in the speech file when extracting the next segment. The default value of 48,000 gives zero overlap between segments. Using this default any input less than 6 seconds will produce one result, based on just the first 3 seconds. A 6 second input will produce two results. If `-s 24,000` for example, segment overlap will be 50%, a 4.5 second input will produce 2 results and a 6 second input will produce 3 results.
 
-`-c C` specifies a channel number to use when the input speech is in a multi-channel `.wav` file. Default is `-c 1`.
+`-c C` specifies a channel number to use when the input speech is in a multi-channel `.wav` file. Default is `-c 1`. *NOTE:* when using a .txt file to specify which .wav files to process, the software will always process the first channel of each file.
 
 `-o 'myFile.txt'` specifies a text file that captures WAWEnet results on a new line for each speech input processed. If the file exists it will be appended to. The extension `.txt` will be added as needed. Default is that no `.txt` file is generated.
 

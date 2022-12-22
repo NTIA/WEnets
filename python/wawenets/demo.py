@@ -35,11 +35,14 @@ def call_command(command: list, shell=False) -> tuple:
 
 
 print(
-    "This file demos WAWEnet functionality and provides some verification that the code has been compiled correctly."
+    "This file demos WAWEnet functionality and provides some verification that the "
+    "code has been compiled correctly."
 )
 print(
-    "Assumes `wawenet.py` is in this directory, and that sample speech is located in ../../speech"
+    "Assumes `wawenet.py` is in this directory, and that sample speech is located "
+    "in ../../speech"
 )
+print("Results should match closely, but may not match exactly. This is expected.")
 
 print("*****************************************************************")
 # One .wav file
