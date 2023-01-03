@@ -1,9 +1,12 @@
 name: wenets_train
 channels:
   - conda-forge
+  - clearml
   - defaults
 dependencies:
   - python=3.10
+  - black
+  - pylint
   - tqdm
   - pyyaml
   - click
@@ -12,6 +15,7 @@ dependencies:
   - pytest
   - scipy
   - scikit-image
+  - clearml
   - pip:
       - sox
       - torch

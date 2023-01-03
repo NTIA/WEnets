@@ -48,6 +48,9 @@ class DFDataset(Dataset):
 
         return sample
 
+    def _get_sample_filepath(self, row):
+        raise NotImplementedError()
+
 
 # TODO: cleanup TUBdataset
 class TUBDataset(DFDataset):
@@ -164,8 +167,9 @@ class TUBDataset(DFDataset):
 
 
 # TODO: clean up TUBDataModule:
-#       decouple the dataset from the data module. most of these args should be kwargs.
-class TUBDataModule(LightningDataModule):
+#       decouple the dataset from the data module. dataset args should be kwargs.
+#       it's not bad for now tho.
+class WEnetsDataModule(LightningDataModule):
     def __init__(
         self,
         csv_path: Union[str, Path],
@@ -174,6 +178,7 @@ class TUBDataModule(LightningDataModule):
         metric: List[str],
         pt_transforms: List[Callable],
         segments: List[str],
+        dataset: Dataset,
         subsample_percent: float = None,
         match_segments=None,  # TODO: relearn this
         df_preprocessor: Callable = None,
@@ -186,12 +191,13 @@ class TUBDataModule(LightningDataModule):
         self.metric = metric
         self.transforms = pt_transforms
         self.segments = segments
+        self.dataset = dataset
         self.subsample_percent = subsample_percent
         self.match_segments = match_segments
         self.df_preprocessor = df_preprocessor
         self.df_preprocessor_args = df_preprocessor_args
 
-    def _apply_transforms(self, df):
+    def _apply_transforms(self, df: pd.DataFrame):
         """apply transforms, return concat dataset"""
         # we have to do this because of how training is set up---
         # we've got original wavforms and IPA-ed wavforms
@@ -199,7 +205,7 @@ class TUBDataModule(LightningDataModule):
         # datasets with different transforms applied
         datasets = list()
         for tf in self.transforms:
-            dataset = TUBDataset(
+            dataset = self.dataset(
                 df,
                 self.root_dir,
                 self.metric,

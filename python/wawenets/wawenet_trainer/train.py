@@ -1,6 +1,7 @@
 import argparse
 import importlib
 
+from pathlib import Path
 from typing import Any, List
 
 from clearml import Task
@@ -8,8 +9,9 @@ from clearml import Task
 import pytorch_lightning as pl
 from torchvision import transforms
 
-from wawenet_trainer.lightning_data import TUBDataModule
+from wawenet_trainer.lightning_data import WEnetsDataModule
 from wawenet_trainer.lightning_model import LitWAWEnetModule
+from wawenet_trainer.training_config import training_params
 from wawenet_trainer.transforms import (
     AudioToTensor,
     get_normalizer_class,
@@ -44,6 +46,8 @@ def train(
     initial_learning_rate: float = None,
     channels: int = None,
     num_workers: int = None,
+    output_uri: Path = None,
+    **kwargs,
 ):
     target_list = " ".join(pred_metric)
     # TODO: is this fixed yet?
@@ -51,7 +55,9 @@ def train(
     task = Task.init(
         project_name=project_name,
         task_name=f"{target_list}_from_script",
-        output_uri="/home/whltexbread/ml_results",
+        output_uri=str(
+            str(output_uri),
+        ),
     )
     # TODO: we've gotta pass the task around so we can upload artifacts
     #       and some reporting too.
@@ -65,7 +71,7 @@ def train(
         for ind, metric in enumerate(pred_metric)
     ]
 
-    # set up the dataset
+    # set up the transforms/one augmentation
     speech_transforms = [
         NormalizeAudio(),
         AudioToTensor(),
@@ -85,11 +91,10 @@ def train(
     transform_list = [speech_transforms, augment_transforms]
     dataset_class = get_class(dataset_name, "wawenet_trainer.lightning_data")
 
-    if segments:
-        segments = segments
-    else:
+    if not segments:
         segments = ["seg_1"]
 
+    # next two items are a bit of a mess tbh
     fr_target_names = {
         "PESQMOSLQO",
         "POLQAMOSLQO",
@@ -100,13 +105,16 @@ def train(
         "SIIBGauss",
     }
     match_segments = [item for item in pred_metric if item in fr_target_names]
-    data_module = TUBDataModule(
+
+    # set up a data module to use with training
+    data_module = WEnetsDataModule(
         csv_path,
         batch_size,
         data_root_path,
         pred_metric,
         transform_list,
         segments,
+        dataset_class,
         subsample_percent=data_fraction,
         match_segments=match_segments,
     )
@@ -147,7 +155,11 @@ def train(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="do a WAWEnets train/test cycle")
+    parser = argparse.ArgumentParser(
+        description="do a WAWEnets train/test cycle."
+        "NOTE: defaults are defined in `../config/train_config.yaml`. any arguments "
+        "not specified will revert to hopefully-sensical defaults."
+    )
     parser.add_argument(
         "--project_name",
         type=str,
@@ -157,26 +169,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_name",
         type=str,
-        default="NISQADataset",
-        help="name of the dataset class to import from `nnate.nisqa_infra`",
+        help="name of the dataset class to use from `wawenet_trainer.lightning_data`",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=60,
         help="batch size for training and testing (default: 60)",
     )
     parser.add_argument(
         "--training_epochs",
         type=int,
-        default=30,
         help="number of epochs to train (default: 30)",
     )
     parser.add_argument(
         "--seed",
         type=int,
-        default=1982,
-        help="seed pytorch and try for some consistent training",
+        help="seed pytorch and try for some consistent training (default: 1982)",
     )
     parser.add_argument(
         "--pred_metric",
@@ -192,13 +200,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_fraction",
         type=float,
-        default=None,
         help="fraction of data to train with",
     )
     parser.add_argument(
         "--initial_weights",
         type=str,
-        default=None,
         help="path to initial model weights",
     )
     parser.add_argument(
@@ -232,30 +238,50 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lightning_module_name",
         type=str,
-        default="",
         help="name of the model class that implements pl.LightningModule",
     )
     parser.add_argument(
         "--initial_learning_rate",
         type=float,
-        default=None,
         help="learning rate starting place",
     )
     parser.add_argument(
         "--channels",
         type=int,
-        default=96,
         help="number of convolutional channels to be used when training. default "
         "is 96",
     )
     parser.add_argument(
         "--num_workers",
         type=int,
-        default=None,
         help="number of CPU workers that should be used to compute transforms/etc. "
         "and read data from disk",
+    )
+    parser.add_argument(
+        "--output_uri",
+        type=str,
+        help="directory where experiment artifacts should be stored. defaults to "
+        "`~/wenets_training_artifacts`",
+    )
+    parser.add_argument(
+        "--training_regime",
+        type=str,
+        help="the specific type of model you'd like to train. options are `default`, "
+        "`multitarget_obj_2022` and `multitarget_subj_obj_2022`.",
+        default="default",
     )
 
     args = parser.parse_args()
     # TODO: read configs for specific training regimes so you don't HAVE to deal with
     #       all these params
+
+    # if args.training_regime is not specified, this will return a template dictionary
+    train_params = training_params(args.training_regime)
+
+    # override `train_params` with any arguments specified manually
+    # this works because we defined the defaults in `../config/train_config.yaml`
+    # instead of in the argparse arguments above
+    manual_params = {key: val for key, val in vars(args).items() if val}
+    train_params.update(**manual_params)
+
+    train(**train_params)
