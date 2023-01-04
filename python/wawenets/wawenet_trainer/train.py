@@ -54,7 +54,7 @@ def train(
     Task.add_requirements("setuptools", "59.5.0")
     task = Task.init(
         project_name=project_name,
-        task_name=f"{target_list}_from_script", # TODO: better name, with timestamp
+        task_name=f"{target_list}_from_script",  # TODO: better name, with timestamp
         output_uri=str(
             str(output_uri),
         ),
@@ -220,7 +220,8 @@ if __name__ == "__main__":
         help="names of the 3-second subsegments to include when training",
     )
     parser.add_argument(
-        "--nisqa_csv_path",
+        # TODO: remove references to old code
+        "--csv_path",
         type=str,
         help="path pointing to the CSV that contains NISQA-style data",
     )

@@ -120,6 +120,7 @@ class TUBDataset(DFDataset):
             "sample_rate": sample_rate,
             "sample_data": np.array([sample], dtype=np.float32),
             "sample_fname": sample_path.name,
+            "df_ind": index,
         }
 
         if self.metric:

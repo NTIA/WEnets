@@ -4,6 +4,7 @@ from typing import Any
 import torch
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
 
@@ -137,7 +138,8 @@ class LitWAWEnetModule(pl.LightningModule):
         lr_scheduler = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, **scheduler_kwargs
-            )
+            ),
+            "monitor": "avg_val_loss",
         }
         # TODO: figure out how commenting this out affects the new API
         # return super().configure_optimizers()
