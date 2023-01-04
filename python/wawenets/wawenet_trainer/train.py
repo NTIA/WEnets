@@ -54,7 +54,7 @@ def train(
     Task.add_requirements("setuptools", "59.5.0")
     task = Task.init(
         project_name=project_name,
-        task_name=f"{target_list}_from_script",
+        task_name=f"{target_list}_from_script", # TODO: better name, with timestamp
         output_uri=str(
             str(output_uri),
         ),
