@@ -105,8 +105,12 @@ class LitWAWEnetModule(pl.LightningModule):
         df_ind = batch["df_ind"]
         y_hat = self.model(x)
         super().test_step(*args, **kwargs)
-        # TDOO: hmm, maybe i should return a dict here instead of a tuple?
-        return y, y_hat, df_ind
+        return {
+            "test_step_loss": self.loss_fn(y_hat, y),
+            "y": y,
+            "y_hat": y,
+            "df_ind": df_ind,
+        }
 
     def test_epoch_end(self, outputs) -> None:
         y_cumulative = list()
@@ -116,10 +120,9 @@ class LitWAWEnetModule(pl.LightningModule):
         # items in a list
         for loader_ind, loader_results in enumerate(outputs):
             # TODO: don't care about DF ind here?
-            for batch_y, batch_y_hat, _ in loader_results:
-                y_cumulative.append(batch_y)
-                y_hat_cumulative.append(batch_y_hat)
-        y = torch.hstack(y_hat_cumulative)
+            y_cumulative.append(loader_results["y"])
+            y_hat_cumulative.append(loader_results["y_hat"])
+        y = torch.vstack(y_hat_cumulative)
         y_hat = torch.vstack(y_hat_cumulative)
         loss = self.loss_fn(y_hat, y)
         self.log_dict({f"test_loader_{loader_ind}_loss": loss})

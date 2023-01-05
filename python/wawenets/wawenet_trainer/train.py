@@ -143,6 +143,7 @@ def train(
         max_epochs=training_epochs,
         callbacks=[],
         accelerator="auto",
+        devices=1,
         auto_select_gpus=True,
         auto_scale_batch_size="binsearch",
         enable_progress_bar=True,
