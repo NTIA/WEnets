@@ -6,6 +6,7 @@ training_regimes:
     seed: 1982
     pred_metric:
       - PESQMOSLQO
+      - POLQAMOSLQO
     groups_json:
     data_fraction:
     initial_weights:

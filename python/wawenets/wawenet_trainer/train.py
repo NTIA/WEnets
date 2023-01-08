@@ -7,8 +7,10 @@ from typing import Any, List
 from clearml import Task
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor
 from torchvision import transforms
 
+from wawenet_trainer.callbacks import TestCallbacks
 from wawenet_trainer.lightning_data import WEnetsDataModule
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.training_config import training_params
@@ -49,7 +51,7 @@ def train(
     output_uri: Path = None,
     **kwargs,
 ):
-    target_list = " ".join(pred_metric)
+    target_list = "_".join(pred_metric)
     # TODO: is this fixed yet?
     Task.add_requirements("setuptools", "59.5.0")
     task = Task.init(
@@ -124,7 +126,7 @@ def train(
     # grab the model class, IE LitWAWEnet2020
     # TODO: maybe this level of flexibility is unwarranted—it's a little confusing
     #       specifying the correct args
-    lightning_module = get_class(
+    lightning_module: LitWAWEnetModule = get_class(
         lightning_module_name, "wawenet_trainer.lightning_model"
     )
     model = lightning_module(
@@ -133,20 +135,26 @@ def train(
         channels=channels,
         unfrozen_layers=unfrozen_layers,
         weights_path=initial_weights,
+        normalizers=normalizers,
+        clearml_task=task,
     )
 
     # setup callbacks
-    # nothing for now because callbacks aren't ready yet
+    callbacks = [
+        LearningRateMonitor(logging_interval="epoch"),
+        TestCallbacks(normalizers=normalizers),
+    ]
 
     # set up a trainer
     trainer = pl.Trainer(
         max_epochs=training_epochs,
-        callbacks=[],
+        callbacks=callbacks,
         accelerator="auto",
         devices=1,
         auto_select_gpus=True,
         auto_scale_batch_size="binsearch",
         enable_progress_bar=True,
+        log_every_n_steps=10,  # TODO: relax this
     )
 
     if not test_only:

@@ -1,12 +1,14 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import torch
-
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor
+
+from clearml import Task
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
+from wawenet_trainer.callbacks import _log_performance_metrics
+from wawenet_trainer.transforms import NormalizeGenericTarget
 
 # set up the lightning module here
 
@@ -20,12 +22,16 @@ class LitWAWEnetModule(pl.LightningModule):
         *args: Any,
         weights_path: Path = None,
         unfrozen_layers: int = None,
+        normalizers: List[NormalizeGenericTarget] = None,
+        clearml_task: Task = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.loss_fn = torch.nn.MSELoss()
-        self.model = None
+        self.model: torch.nn.Module = None
         self.unfrozen_layers = unfrozen_layers
+        self.normalizers = normalizers
+        self.clearml_task = clearml_task
 
         # we don't use this directly, but ptl does
         self.learning_rate = learning_rate
@@ -43,6 +49,12 @@ class LitWAWEnetModule(pl.LightningModule):
             for params in all_params[: -self.unfrozen_layers]:
                 params.requires_grad = False
 
+    def _upload_clearml_artifact(self, artifact_name: str, artifact: Any):
+        """fail gracefully if we don't have a clearml task"""
+        if not self.clearml_task:
+            return
+        self.clearml_task.upload_artifact(artifact_name, artifact)
+
     def forward(self, batch):
         prediction = self.model(batch)
         return prediction
@@ -57,15 +69,27 @@ class LitWAWEnetModule(pl.LightningModule):
         # now log to clearml
         # if we do `Task.init` correctly, this will send tensorboard-like logging
         # directly to clearML
-        self.log("train_step_loss", loss)
-        return {"loss": loss}
+        self.log("training batch loss", loss)
+        return {"loss": loss, "y": y.detach().cpu(), "y_hat": y_hat.detach().cpu()}
 
     def training_epoch_end(self, outputs) -> None:
         # `outputs` is a list of dictionaries for all batches in the epoch, returned
         # by `training_step`
+        #
+        # i'm struggling a little bit with what should be in the model vs. what should
+        # be in the callbacks. weird that this _can_happen in two places based on their
+        # API
         print(f"completed epoch {self.current_epoch}")
-        train_loss_mean = torch.stack([item["loss"] for item in outputs]).mean()
-        self.log("avg_train_loss", train_loss_mean)
+        # # is this
+        # train_loss_mean = torch.stack([item["loss"] for item in outputs]).mean()
+        # self.log("avg_train_loss", train_loss_mean)
+        # # the same as this
+        # y = torch.vstack([item["y"] for item in outputs])
+        # y_hat = torch.vstack([item["y_hat"] for item in outputs])
+        # epoch_loss = self.loss_fn(y_hat, y)
+        # self.log("training epoch loss", epoch_loss)
+        performance_metrics = _log_performance_metrics(outputs, self, "training epoch")
+        # TODO: report correlations for each target
         return super().training_epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
@@ -76,16 +100,28 @@ class LitWAWEnetModule(pl.LightningModule):
         # a random batch order.
         df_ind = batch["df_ind"]
         y_hat = self.model(x)
+        step_loss = self.loss_fn(y_hat, y)
+        self.log("validation batch loss", step_loss)
         return {
-            "val_step_loss": self.loss_fn(y_hat, y),
-            "y": y,
-            "y_hat": y,
+            "val_batch_loss": step_loss,
+            "y": y.detach().cpu(),
+            "y_hat": y_hat.detach().cpu(),
             "df_ind": df_ind,
         }
 
     def validation_epoch_end(self, outputs):
-        val_loss_mean = torch.stack([item["val_step_loss"] for item in outputs]).mean()
+        # TODO: denormalize before doing RMSE?
+        # is this
+        val_loss_mean = torch.stack([item["val_batch_loss"] for item in outputs]).mean()
         self.log("avg_val_loss", val_loss_mean)
+        # # the same as this?
+        # y = torch.vstack([item["y"] for item in outputs])
+        # y_hat = torch.vstack([item["y_hat"] for item in outputs])
+        # epoch_loss = self.loss_fn(y_hat, y)
+        # self.log("validation epoch loss", epoch_loss)
+        performance_metrics = _log_performance_metrics(
+            outputs, self, "validation epoch"
+        )
         # TODO: not certain about this bit, the API might have changed
         super().validation_epoch_end(outputs)
         return {"avg_val_loss": val_loss_mean}
@@ -142,6 +178,7 @@ class LitWAWEnetModule(pl.LightningModule):
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, **scheduler_kwargs
             ),
+            # the key for this monitor has to be `self.log`ged! weird!!!
             "monitor": "avg_val_loss",
         }
         # TODO: figure out how commenting this out affects the new API
