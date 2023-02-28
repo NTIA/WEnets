@@ -12,9 +12,9 @@ from wawenet_trainer.transforms import NormalizeGenericTarget
 
 
 # we have to do some stupid gymnastics because:
-# 1. `on_[training/validation]_batch_end` receive outputs from the model
-# 2. `on_[training/validation]_epoch_end` don't receive outputs from the model
-# 3. `[training/validation]_epoch_end` in the pl.Module DO receive outputs from the
+# 1. `pl.Callback.on_[training/validation]_batch_end` receive outputs from the model
+# 2. `pl.Callback.on_[training/validation]_epoch_end` don't receive outputs from the model
+# 3. `pl.LightningModule.[training/validation]_epoch_end` in the pl.Module DO receive outputs from the
 #     model
 #
 # otherwise we'd have some nice separation
@@ -48,6 +48,7 @@ def _log_correlations(
     pl_module: pl.LightningModule,
     phase: str,
 ):
+    # number of columns should match number of targets
     assert y.shape[1] == len(pl_module.normalizers)
     correlations = dict()
     all_pearson_r = np.zeros((0))
@@ -69,12 +70,6 @@ class TestCallbacks(pl.Callback):
         # ugh, after all the work i did to be able to log in two places,
         # i don't see a way around keeping track of predictions and actual values.
         # this is pretty hairy tbh.
-        self.y_train: list = list()
-        self.y_hat_train: list = list()
-        self.y_val: list = list()
-        self.y_hat_val: list = list()
-        self.y_test: list = list()
-        self.y_hat_test: list = list()
         self.loss_dict = {
             "training": list(),
             "validation": list(),
@@ -92,8 +87,6 @@ class TestCallbacks(pl.Callback):
         # TODO: make sure tensors don't remain on GPU
         # TODO: handle denormalization here, since this is where we're doing reporting
         # TODO: handle reporting by language, impairment here
-        self.y_val = list()
-        self.y_hat_val = list()
         return super().on_validation_start(trainer, pl_module)
 
     def on_validation_batch_end(
@@ -108,8 +101,6 @@ class TestCallbacks(pl.Callback):
         performance_metrics = _log_performance_metrics(
             outputs, pl_module, "validation batch"
         )
-        self.y_val.append(outputs["y"])
-        self.y_hat_val.append(outputs["y_hat"])
         return super().on_validation_batch_end(
             trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
         )
@@ -117,10 +108,14 @@ class TestCallbacks(pl.Callback):
     def on_validation_epoch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        y = torch.vstack([item for item in self.y_val])
-        y_hat = torch.vstack([item for item in self.y_hat_val])
-        loss = pl_module.loss_fn(y, y_hat)
-        self.loss_dict["validation"][pl_module.current_epoch] = loss
+        performance_metrics = _log_performance_metrics(
+            pl_module.val_step_outputs, pl_module, "validation"
+        )
+        # TODO: do i need the next line? i think this is a leftover from a less civilized time
+        self.loss_dict["validation"][pl_module.current_epoch] = performance_metrics[
+            "loss"
+        ]
+        pl_module.val_step_outputs = None
         return super().on_validation_epoch_end(trainer, pl_module)
 
     def on_validation_end(
@@ -140,6 +135,17 @@ class TestCallbacks(pl.Callback):
             outputs, pl_module, "training batch"
         )
         return super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+
+    def on_train_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        performance_metrics = _log_performance_metrics(
+            pl_module.train_step_outputs, pl_module, "train"
+        )
+        # TODO: do i need the next line? i think this is a leftover from a less civilized time
+        self.loss_dict["train"][pl_module.current_epoch] = performance_metrics["loss"]
+        pl_module.train_step_outputs = None
+        return super().on_train_epoch_end(trainer, pl_module)
 
     def on_test_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"

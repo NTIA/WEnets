@@ -69,6 +69,9 @@ class TUBDataset(DFDataset):
         segments: Union[List[str], str] = None,
         match_segments=None,
     ):
+        # TODO: set up an init arg that specifies whether or not to send metadata
+        #       along—for training we can save memory by not attaching metadata
+        #       to every sample
         self.df = tub_df
         self.root_dir = Path(root_dir)
         self.metric = metric
@@ -104,12 +107,22 @@ class TUBDataset(DFDataset):
     def __len__(self):
         return len(self.index_mapper)
 
-    def __getitem__(self, index):
+    def _get_row_seg(self, index):
         # convert from concat'ed index to original DF index
         mapped_index, current_segment = self.index_mapper.iloc[index]
         # `.iloc` doesn't work here; indices coming in will not be in the
         # form 0, 1, ..., n - 1
         row = self.tub_df.loc[mapped_index]
+        return row, current_segment
+
+    def _get_metadata(self, index):
+        # this is a nice idea, but i using `ConcatDataset` in our datamodule setup
+        # makes using this impossible :(
+        row, _ = self.index_mapper.iloc[index]
+        return row
+
+    def __getitem__(self, index):
+        row, current_segment = self._get_row_seg(index)
         sample_path = self._get_sample_filepath(row)
         sample_rate, sample = wavfile.read(sample_path)
 

@@ -7,7 +7,6 @@ import pytorch_lightning as pl
 from clearml import Task
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
-from wawenet_trainer.callbacks import _log_performance_metrics
 from wawenet_trainer.transforms import NormalizeGenericTarget
 
 # set up the lightning module here
@@ -42,6 +41,11 @@ class LitWAWEnetModule(pl.LightningModule):
         if weights_path:
             self.weights = torch.load(weights_path)
 
+        # some structured storage for train/val/test analysis
+        self.training_step_outputs = None
+        self.val_step_outputs = None
+        self.test_step_outputs = None
+
     def _freeze_layers(self):
         # freeze layers if requested
         if self.unfrozen_layers:
@@ -70,7 +74,11 @@ class LitWAWEnetModule(pl.LightningModule):
         # if we do `Task.init` correctly, this will send tensorboard-like logging
         # directly to clearML
         self.log("training batch loss", loss)
-        return {"loss": loss, "y": y.detach().cpu(), "y_hat": y_hat.detach().cpu()}
+        return {
+            "loss": loss,
+            "y": y.detach().cpu(),
+            "y_hat": y_hat.detach().cpu(),
+        }
 
     def training_epoch_end(self, outputs) -> None:
         # `outputs` is a list of dictionaries for all batches in the epoch, returned
@@ -88,8 +96,8 @@ class LitWAWEnetModule(pl.LightningModule):
         # y_hat = torch.vstack([item["y_hat"] for item in outputs])
         # epoch_loss = self.loss_fn(y_hat, y)
         # self.log("training epoch loss", epoch_loss)
-        performance_metrics = _log_performance_metrics(outputs, self, "training epoch")
         # TODO: report correlations for each target
+        self.training_step_outputs = outputs
         return super().training_epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
@@ -119,9 +127,7 @@ class LitWAWEnetModule(pl.LightningModule):
         # y_hat = torch.vstack([item["y_hat"] for item in outputs])
         # epoch_loss = self.loss_fn(y_hat, y)
         # self.log("validation epoch loss", epoch_loss)
-        performance_metrics = _log_performance_metrics(
-            outputs, self, "validation epoch"
-        )
+        self.val_step_outputs = outputs
         # TODO: not certain about this bit, the API might have changed
         super().validation_epoch_end(outputs)
         return {"avg_val_loss": val_loss_mean}
@@ -143,8 +149,8 @@ class LitWAWEnetModule(pl.LightningModule):
         super().test_step(*args, **kwargs)
         return {
             "test_step_loss": self.loss_fn(y_hat, y),
-            "y": y,
-            "y_hat": y,
+            "y": y.detach().cpu(),
+            "y_hat": y.detach().cpu(),
             "df_ind": df_ind,
         }
 
@@ -158,7 +164,7 @@ class LitWAWEnetModule(pl.LightningModule):
             # TODO: don't care about DF ind here?
             y_cumulative.append(loader_results["y"])
             y_hat_cumulative.append(loader_results["y_hat"])
-        y = torch.vstack(y_hat_cumulative)
+        y = torch.vstack(y_cumulative)
         y_hat = torch.vstack(y_hat_cumulative)
         loss = self.loss_fn(y_hat, y)
         self.log_dict({f"test_loader_{loader_ind}_loss": loss})
