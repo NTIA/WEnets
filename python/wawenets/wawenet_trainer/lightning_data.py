@@ -195,6 +195,7 @@ class WEnetsDataModule(LightningDataModule):
         dataset: Dataset,
         subsample_percent: float = None,
         match_segments=None,  # TODO: relearn this
+        num_workers: int = 0,
         df_preprocessor: Callable = None,
         df_preprocessor_args: Dict[str, Any] = None,
     ):
@@ -208,6 +209,7 @@ class WEnetsDataModule(LightningDataModule):
         self.dataset = dataset
         self.subsample_percent = subsample_percent
         self.match_segments = match_segments
+        self.num_workers = num_workers
         self.df_preprocessor = df_preprocessor
         self.df_preprocessor_args = df_preprocessor_args
 
@@ -271,7 +273,7 @@ class WEnetsDataModule(LightningDataModule):
             self.tub_train,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=8,
+            num_workers=self.num_workers,
         )
 
     def val_dataloader(self):
@@ -279,9 +281,10 @@ class WEnetsDataModule(LightningDataModule):
             self.tub_val,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=8,
+            num_workers=self.num_workers,
         )
 
     def test_dataloader(self):
-        # TODO: handle multiple test dataloaders
-        return DataLoader(self.tub_test, batch_size=self.batch_size, num_workers=8)
+        return DataLoader(
+            self.tub_test, batch_size=self.batch_size, num_workers=self.num_workers
+        )

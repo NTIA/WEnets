@@ -42,9 +42,10 @@ class LitWAWEnetModule(pl.LightningModule):
             self.weights = torch.load(weights_path)
 
         # some structured storage for train/val/test analysis
-        self.training_step_outputs = None
-        self.val_step_outputs = None
-        self.test_step_outputs = None
+        self.training_step_outputs: list = None
+        self.val_step_outputs: list = None
+        self.val_loss_mean: float = None
+        self.test_step_outputs: list = None
 
     def _freeze_layers(self):
         # freeze layers if requested
@@ -96,7 +97,6 @@ class LitWAWEnetModule(pl.LightningModule):
         # y_hat = torch.vstack([item["y_hat"] for item in outputs])
         # epoch_loss = self.loss_fn(y_hat, y)
         # self.log("training epoch loss", epoch_loss)
-        # TODO: report correlations for each target
         self.training_step_outputs = outputs
         return super().training_epoch_end(outputs)
 
@@ -114,12 +114,11 @@ class LitWAWEnetModule(pl.LightningModule):
             "val_batch_loss": step_loss,
             "y": y.detach().cpu(),
             "y_hat": y_hat.detach().cpu(),
-            "df_ind": df_ind,
         }
 
     def validation_epoch_end(self, outputs):
         # TODO: denormalize before doing RMSE?
-        # is this
+        # TODO: is this
         val_loss_mean = torch.stack([item["val_batch_loss"] for item in outputs]).mean()
         self.log("avg_val_loss", val_loss_mean)
         # # the same as this?
@@ -128,7 +127,6 @@ class LitWAWEnetModule(pl.LightningModule):
         # epoch_loss = self.loss_fn(y_hat, y)
         # self.log("validation epoch loss", epoch_loss)
         self.val_step_outputs = outputs
-        # TODO: not certain about this bit, the API might have changed
         super().validation_epoch_end(outputs)
         return {"avg_val_loss": val_loss_mean}
 
@@ -145,29 +143,23 @@ class LitWAWEnetModule(pl.LightningModule):
         # though we probably don't need to since the val dataloader shouldn't have
         # a random batch order.
         df_ind = batch["df_ind"]
+        # keep track of row metadata so we don't have to back it out later
+        language = batch["language"]
+        impairment = batch["impairment"]
+        # predict
         y_hat = self.model(x)
         super().test_step(*args, **kwargs)
         return {
             "test_step_loss": self.loss_fn(y_hat, y),
             "y": y.detach().cpu(),
-            "y_hat": y.detach().cpu(),
+            "y_hat": y_hat.detach().cpu(),
             "df_ind": df_ind,
+            "language": language,
+            "impairment": impairment,
         }
 
     def test_epoch_end(self, outputs) -> None:
-        y_cumulative = list()
-        y_hat_cumulative = list()
-        # handle the case where we might have results from multiple dataloaders
-        # if there are multiple dataloaders, results will be stored as separate
-        # items in a list
-        for loader_ind, loader_results in enumerate(outputs):
-            # TODO: don't care about DF ind here?
-            y_cumulative.append(loader_results["y"])
-            y_hat_cumulative.append(loader_results["y_hat"])
-        y = torch.vstack(y_cumulative)
-        y_hat = torch.vstack(y_hat_cumulative)
-        loss = self.loss_fn(y_hat, y)
-        self.log_dict({f"test_loader_{loader_ind}_loss": loss})
+        self.test_step_outputs = outputs
         return super().test_epoch_end(outputs)
 
     def configure_optimizers(self) -> Any:

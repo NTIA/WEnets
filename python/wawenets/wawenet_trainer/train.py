@@ -119,6 +119,7 @@ def train(
         dataset_class,
         subsample_percent=data_fraction,
         match_segments=match_segments,
+        num_workers=num_workers,
     )
     data_module.setup()
 

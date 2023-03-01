@@ -23,8 +23,8 @@ from wawenet_trainer.transforms import NormalizeGenericTarget
 def _log_performance_metrics(
     outputs: dict, pl_module: pl.LightningModule, phase: str
 ) -> dict:
-    # this will happen at the end of each batch.
-    # because i only wanna stack this stuff once
+    # if we've gotten all batch outputs (instead of a single batch output),
+    # IE at the end of an epoch, stack. only wanna stack this stuff once
     if isinstance(outputs, list):
         y = torch.vstack([item["y"] for item in outputs])
         y_hat = torch.vstack([item["y_hat"] for item in outputs])
@@ -109,12 +109,11 @@ class TestCallbacks(pl.Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         performance_metrics = _log_performance_metrics(
-            pl_module.val_step_outputs, pl_module, "validation"
+            pl_module.val_step_outputs, pl_module, "validation epoch"
         )
         # TODO: do i need the next line? i think this is a leftover from a less civilized time
-        self.loss_dict["validation"][pl_module.current_epoch] = performance_metrics[
-            "loss"
-        ]
+        self.loss_dict["validation"].append(performance_metrics["loss"])
+        pl_module.val_loss_mean = performance_metrics["loss"]
         pl_module.val_step_outputs = None
         return super().on_validation_epoch_end(trainer, pl_module)
 
@@ -140,10 +139,10 @@ class TestCallbacks(pl.Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         performance_metrics = _log_performance_metrics(
-            pl_module.train_step_outputs, pl_module, "train"
+            pl_module.training_step_outputs, pl_module, "training epoch"
         )
         # TODO: do i need the next line? i think this is a leftover from a less civilized time
-        self.loss_dict["train"][pl_module.current_epoch] = performance_metrics["loss"]
+        self.loss_dict["training"].append(performance_metrics["loss"])
         pl_module.train_step_outputs = None
         return super().on_train_epoch_end(trainer, pl_module)
 
@@ -164,6 +163,16 @@ class TestCallbacks(pl.Callback):
         return super().on_test_batch_end(
             trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
         )
+
+    def on_test_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        # lots of work to do here—graph generation, denormalization, etc.
+        performance_metrics = _log_performance_metrics(
+            pl_module.test_step_outputs, pl_module, "test"
+        )
+        pl_module.test_step_outputs = None
+        return super().on_test_epoch_end(trainer, pl_module)
 
     def on_test_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
