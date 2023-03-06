@@ -150,10 +150,10 @@ class LitWAWEnetModule(pl.LightningModule):
         y_hat = self.model(x)
         super().test_step(*args, **kwargs)
         return {
-            "test_step_loss": self.loss_fn(y_hat, y),
+            "test_step_loss": self.loss_fn(y_hat, y).detach().cpu(),
             "y": y.detach().cpu(),
             "y_hat": y_hat.detach().cpu(),
-            "df_ind": df_ind,
+            "df_ind": df_ind.detach().cpu(),
             "language": language,
             "impairment": impairment,
         }
