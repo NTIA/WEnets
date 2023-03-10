@@ -15,6 +15,7 @@ dependencies:
   - pytest
   - scipy
   - scikit-image
+  - scikit-learn
   - clearml
   - pip:
       - sox

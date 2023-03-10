@@ -1,10 +1,12 @@
-from typing import List
+from typing import List, Union
 
 import torch
 import pytorch_lightning as pl
 
 import numpy as np
 import pandas as pd
+
+from sklearn.metrics import mean_absolute_error as mae
 
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.transforms import NormalizeGenericTarget
@@ -60,7 +62,9 @@ def log_performance_metrics(
     return {"loss": loss, "correlations": correlations}
 
 
-def _calculate_correlation(y: torch.tensor, y_hat: torch.tensor):
+def _calculate_correlation(
+    y: Union[torch.tensor, np.ndarray], y_hat: Union[torch.tensor, np.ndarray]
+):
     corr_matrix = np.corrcoef(y, y_hat)
     return corr_matrix[0, 1]
 
@@ -117,12 +121,15 @@ class WENetsAnalysis:
         self.df = pd.DataFrame.from_dict(stacked)
 
     @staticmethod
-    def _stack_field(test_outputs: List[dict], field_name: str):
+    def _stack_field(
+        test_outputs: List[dict], field_name: str
+    ) -> Union[torch.Tensor, list]:
         if isinstance(test_outputs[0][field_name], torch.Tensor):
             if len(test_outputs[0][field_name].shape) == 1:
-
+                # handle any tensors that are 1D
                 return torch.hstack([item[field_name] for item in test_outputs])
             else:
+                # handle 2D tensors, including those with a singleton second-dimension
                 return torch.vstack([item[field_name] for item in test_outputs])
         else:
             stacked = list()
@@ -133,15 +140,57 @@ class WENetsAnalysis:
     def log_performance_metrics(self):
         return log_performance_metrics(self.test_outputs, self.pl_module, "test")
 
-    def grouped_performance_metrics(self, group_column: str):
-        group_performance = dict()
+    def _generate_performance_record(
+        self, normalizer_name: str, df: pd.DataFrame
+    ) -> dict:
+        # generate a dictionary containing performance metrics for a specific target
+        performance_record = dict()
+        y = df[normalizer_name].to_numpy()
+        y_hat = df[f"{normalizer_name}_hat"].to_numpy()
+        performance_record["target"] = normalizer_name
+        performance_record["samp"] = len(df)
+        performance_record["corr"] = _calculate_correlation(y, y_hat)
+        performance_record["loss"] = self.pl_module.loss_fn(
+            torch.Tensor(y),
+            torch.Tensor(y_hat),
+        ).to_numpy()
+        performance_record["mae"] = mae(y, y_hat)
+        performance_record["tavg"] = y.mean()
+        performance_record["pavg"] = y_hat.mean()
+        return performance_record
+
+    def _per_target_performance_records(
+        self, df: pd.DataFrame, group_name: str = None
+    ) -> List[dict]:
+        # generate performance metrics for all targets
+        performance_records = list()
+        for normalizer in self.pl_module.normalizers:
+            performance_record = self._generate_performance_record(normalizer.name, df)
+            # if this `df` only contains data from a specific group, keep track of that here
+            if group_name:
+                performance_record["group"] = group_name
+            performance_records.append(performance_record)
+
+        return performance_records
+
+    def target_performance_metrics(self) -> pd.DataFrame:
+        performance_records = self._per_target_performance_records(self.df)
+        return pd.DataFrame(performance_records)
+
+    def grouped_performance_metrics(self, group_column: str) -> pd.DataFrame:
+        # generate performance metrics for all targets, but also grouped by
+        # the values in `group_column`
+        #
+        # this generates a new `df` which can then also be processed
+        grouped_performance_records = list()
         # loop over all possible groups
         for group_name, gdf in self.df.groupby(by=group_column):
             # loop over all our targets
-            # TODO: better data structure, and don't overwrite previous target's results
-            for normalizer in self.pl_module.normalizers:
-                group_performance[group_name] = self.pl_module.loss_fn(
-                    torch.Tensor(gdf[normalizer.name].to_numpy()),
-                    torch.Tensor(gdf[f"{normalizer.name}_hat"].to_numpy()),
-                )
-        print(group_performance)
+            # make a list of dictionaries and then make a dataframe from that
+            performance_records = self._per_target_performance_records(
+                gdf, group_name=group_name
+            )
+            grouped_performance_records.extend(performance_records)
+        group_df = pd.DataFrame(performance_records)
+        # TODO: store DF as an artifact in clearML
+        return group_df

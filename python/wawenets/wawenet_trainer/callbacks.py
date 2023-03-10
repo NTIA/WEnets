@@ -122,7 +122,16 @@ class TestCallbacks(pl.Callback):
         # lots of work to do here—graph generation, denormalization, etc.
         analyzer = WENetsAnalysis(pl_module.test_step_outputs, pl_module)
         analyzer.log_performance_metrics()
-        analyzer.grouped_performance_metrics("impairment")
+        # log some stuff to clearml
+        # bad name for backwards compatibility, i reserve the right to change it later
+        pl_module.clearml_task.upload_artifact(
+            "test_grouped_results_table_df",
+            analyzer.grouped_performance_metrics("impairment"),
+        )
+        pl_module.clearml_task.upload_artifact(
+            "test_results_table_df", analyzer.target_performance_metrics()
+        )
+
         pl_module.test_step_outputs = None
         return super().on_test_epoch_end(trainer, pl_module)
 
