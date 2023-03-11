@@ -32,16 +32,19 @@ we can use `df.groupby` to handle per-condition and per-language calculations wh
 sharing code.
 
 items to consider reporting:
-1. per_cond_df
+1. DONE--per_cond_df
 2. result vectors for each target
 3. result vectors for each target, by condition (?)
     this might be a bit much?
-4. `test_results_table`, make it a DF, and use pandas to write out markdown tables
+4. DONE--`test_results_table`, make it a DF, and use pandas to write out markdown tables
     columns: samples, correlation, rmse, mae, tavg, pavg
-5. `test_grouped_results_table`, make it a DF and use pandas to write out markdown tables
-6. training and validation correlation and loss at the end of each epoch.
+5. DONE--`test_grouped_results_table`, make it a DF and use pandas to write out markdown tables
+6. DONE--training and validation correlation and loss at the end of each epoch.
     but maybe not because this is already a scalar graph, and i think we can 
     get at that data programmatically using the clearML api.
+
+TODO: will need to make a mechanism for remapping group names, esp.
+      for the original ITS dataset
 """
 
 
@@ -150,10 +153,15 @@ class WENetsAnalysis:
         performance_record["target"] = normalizer_name
         performance_record["samp"] = len(df)
         performance_record["corr"] = _calculate_correlation(y, y_hat)
-        performance_record["loss"] = self.pl_module.loss_fn(
-            torch.Tensor(y),
-            torch.Tensor(y_hat),
-        ).to_numpy()
+        loss = (
+            self.pl_module.loss_fn(
+                torch.Tensor(y),
+                torch.Tensor(y_hat),
+            )
+            .numpy()
+            .item()
+        )
+        performance_record["loss"] = loss
         performance_record["mae"] = mae(y, y_hat)
         performance_record["tavg"] = y.mean()
         performance_record["pavg"] = y_hat.mean()
@@ -191,6 +199,27 @@ class WENetsAnalysis:
                 gdf, group_name=group_name
             )
             grouped_performance_records.extend(performance_records)
-        group_df = pd.DataFrame(performance_records)
-        # TODO: store DF as an artifact in clearML
+        group_df = pd.DataFrame(grouped_performance_records)
+        # TODO: use this DF to calculate the `per_cond_df`—calculate correlation of the
+        #       tavg and pavg
         return group_df
+
+    def per_condition_metrics(self, grouped_df: pd.DataFrame):
+        # group by target, then do correlation and loss for each
+        per_condition_metrics = list()
+        for group_name, gdf in grouped_df.groupby(by="target"):
+            record = {"target": group_name}
+            record["per_condition_correlation"] = _calculate_correlation(
+                gdf["tavg"], gdf["pavg"]
+            )
+            record["per_condition_loss"] = (
+                self.pl_module.loss_fn(
+                    torch.Tensor(gdf["tavg"].to_numpy()),
+                    torch.Tensor(gdf["pavg"].to_numpy()),
+                )
+                .numpy()
+                .item()
+            )
+            per_condition_metrics.append(record)
+        per_condition_df = pd.DataFrame(per_condition_metrics)
+        return per_condition_df

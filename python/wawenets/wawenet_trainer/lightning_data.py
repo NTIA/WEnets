@@ -68,14 +68,16 @@ class TUBDataset(DFDataset):
         transform=None,
         segments: Union[List[str], str] = None,
         match_segments=None,
+        metadata: bool = False,
     ):
-        # TODO: set up an init arg that specifies whether or not to send metadata
+        # `metadata` specifies whether or not to send metadata
         #       along—for training we can save memory by not attaching metadata
         #       to every sample
         self.df = tub_df
         self.root_dir = Path(root_dir)
         self.metric = metric
         self.transform = transform
+        self.metadata = metadata
         if isinstance(segments, list):
             self.segments = segments
         elif isinstance(segments, str):
@@ -116,7 +118,7 @@ class TUBDataset(DFDataset):
         return row, current_segment
 
     def _get_metadata(self, index):
-        # this is a nice idea, but i using `ConcatDataset` in our datamodule setup
+        # this is a nice idea, but using `ConcatDataset` in our datamodule setup
         # makes using this impossible :(
         row, _ = self.index_mapper.iloc[index]
         return row
@@ -130,10 +132,7 @@ class TUBDataset(DFDataset):
         sample = self._retrieve_subsegment(sample, sample_rate, row, current_segment)
 
         sample = {
-            "sample_rate": sample_rate,
             "sample_data": np.array([sample], dtype=np.float32),
-            "sample_fname": sample_path.name,
-            "df_ind": index,
         }
 
         if self.metric:
@@ -145,8 +144,12 @@ class TUBDataset(DFDataset):
                 [row[metric] for metric in metrics], dtype=np.float32
             )
 
-        sample["language"] = row[self.language]
-        sample["impairment"] = row[self.impairment]
+        if self.metadata:
+            sample["sample_rate"] = sample_rate
+            sample["sample_fname"] = sample_path.name
+            sample["df_ind"] = index
+            sample["language"] = row[self.language]
+            sample["impairment"] = row[self.impairment]
 
         if self.transform:
             sample = self.transform(sample)
@@ -198,6 +201,7 @@ class WEnetsDataModule(LightningDataModule):
         num_workers: int = 0,
         df_preprocessor: Callable = None,
         df_preprocessor_args: Dict[str, Any] = None,
+        split_column_name: str = "db",
     ):
         super().__init__()
         self.csv_path = csv_path
@@ -212,8 +216,9 @@ class WEnetsDataModule(LightningDataModule):
         self.num_workers = num_workers
         self.df_preprocessor = df_preprocessor
         self.df_preprocessor_args = df_preprocessor_args
+        self.split_column_name = split_column_name
 
-    def _apply_transforms(self, df: pd.DataFrame):
+    def _apply_transforms(self, df: pd.DataFrame, metadata: bool = False):
         """apply transforms, return concat dataset"""
         # we have to do this because of how training is set up---
         # we've got original wavforms and IPA-ed wavforms
@@ -228,6 +233,7 @@ class WEnetsDataModule(LightningDataModule):
                 tf,
                 segments=self.segments,
                 match_segments=self.match_segments,
+                metadata=metadata,
             )
             datasets.append(dataset)
         return ConcatDataset(datasets)
@@ -247,8 +253,8 @@ class WEnetsDataModule(LightningDataModule):
 
         if stage == "fit" or stage is None:
             # split by train/test/val
-            train_df = df[df["db"].str.contains("TRAIN")]
-            val_df = df[df["db"].str.contains("VAL")]
+            train_df = df[df[self.split_column_name].str.contains("TRAIN")]
+            val_df = df[df[self.split_column_name].str.contains("VAL")]
 
             # if we wanna train on a subset
             if self.subsample_percent:
@@ -262,11 +268,14 @@ class WEnetsDataModule(LightningDataModule):
 
         if stage == "test" or stage is None:
             # same as above
-            test_df = df[df["db"].str.contains("TEST")]
+            test_df = df[df[self.split_column_name].str.contains("TEST")]
 
             if self.subsample_percent:
                 test_df = test_df.sample(frac=self.subsample_percent)
-            self.tub_test = self._apply_transforms(test_df)
+            # be sure to send the metadata through so we can do fun analysis :)
+            self.tub_test = self._apply_transforms(test_df, metadata=True)
+
+            # TODO: set up unseen dataset too! and handle one/multiple datasets gracefully
 
     def train_dataloader(self):
         return DataLoader(

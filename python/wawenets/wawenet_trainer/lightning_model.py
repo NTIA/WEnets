@@ -103,10 +103,6 @@ class LitWAWEnetModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch["sample_data"]
         y = batch["pred_metric"]
-        # we can keep track of a list of indices from the original DF here, even
-        # though we probably don't need to since the val dataloader shouldn't have
-        # a random batch order.
-        df_ind = batch["df_ind"]
         y_hat = self.model(x)
         step_loss = self.loss_fn(y_hat, y)
         self.log("validation batch loss", step_loss)
@@ -139,10 +135,7 @@ class LitWAWEnetModule(pl.LightningModule):
     def test_step(self, batch, batch_idx, *args: Any, dataloader_idx=0, **kwargs: Any):
         x = batch["sample_data"]
         y = batch["pred_metric"]
-        # we can keep track of a list of indices from the original DF here, even
-        # though we probably don't need to since the val dataloader shouldn't have
-        # a random batch order.
-        df_ind = batch["df_ind"]
+
         # keep track of row metadata so we don't have to back it out later
         language = batch["language"]
         impairment = batch["impairment"]
@@ -153,7 +146,6 @@ class LitWAWEnetModule(pl.LightningModule):
             "test_step_loss": self.loss_fn(y_hat, y).detach().cpu(),
             "y": y.detach().cpu(),
             "y_hat": y_hat.detach().cpu(),
-            "df_ind": df_ind.detach().cpu(),
             "language": language,
             "impairment": impairment,
         }

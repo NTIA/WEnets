@@ -12,7 +12,7 @@ from wawenet_trainer.transforms import NormalizeGenericTarget
 # set up callbacks here. this is the tricky one, maybe
 
 
-# we have to do some stupid gymnastics because:
+# we have to do some gymnastics because:
 # 1. `pl.Callback.on_[training/validation]_batch_end` receive outputs from the model
 # 2. `pl.Callback.on_[training/validation]_epoch_end` don't receive outputs from the model
 # 3. `pl.LightningModule.[training/validation]_epoch_end` in the pl.Module DO receive outputs from the
@@ -61,8 +61,9 @@ class TestCallbacks(pl.Callback):
         performance_metrics = log_performance_metrics(
             pl_module.val_step_outputs, pl_module, "validation epoch"
         )
-        # TODO: do i need the next line? i think this is a leftover from a less civilized time
+        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
         self.loss_dict["validation"].append(performance_metrics["loss"])
+        self.corr_dict["validation"].append(performance_metrics["correlations"])
         pl_module.val_loss_mean = performance_metrics["loss"]
         pl_module.val_step_outputs = None
         return super().on_validation_epoch_end(trainer, pl_module)
@@ -91,8 +92,9 @@ class TestCallbacks(pl.Callback):
         performance_metrics = log_performance_metrics(
             pl_module.training_step_outputs, pl_module, "training epoch"
         )
-        # TODO: do i need the next line? i think this is a leftover from a less civilized time
+        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
         self.loss_dict["training"].append(performance_metrics["loss"])
+        self.corr_dict["training"].append(performance_metrics["correlations"])
         pl_module.train_step_outputs = None
         return super().on_train_epoch_end(trainer, pl_module)
 
@@ -117,21 +119,44 @@ class TestCallbacks(pl.Callback):
     def on_test_epoch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        # TODO: handle denormalization here, since this is where we're doing reporting
-        # TODO: handle reporting by language, impairment here
-        # lots of work to do here—graph generation, denormalization, etc.
+        # here we do graph generation, denormalization, etc.
         analyzer = WENetsAnalysis(pl_module.test_step_outputs, pl_module)
         analyzer.log_performance_metrics()
-        # log some stuff to clearml
-        # bad name for backwards compatibility, i reserve the right to change it later
+
+        # log some stuff to clearml -- first, grouped performance based on impairment
+        impairment_performance_df = analyzer.grouped_performance_metrics("impairment")
         pl_module.clearml_task.upload_artifact(
+            # bad name for backwards compatibility, i reserve the right to change it later
             "test_grouped_results_table_df",
-            analyzer.grouped_performance_metrics("impairment"),
+            impairment_performance_df,
         )
+
+        # now some per-condition measurements
+        per_cond_df = analyzer.per_condition_metrics(impairment_performance_df)
+        pl_module.clearml_task.upload_artifact("per_cond_df", per_cond_df)
+        # if we want per-language results, we would do that here and copy the pattern above
+
+        # overall results
         pl_module.clearml_task.upload_artifact(
             "test_results_table_df", analyzer.target_performance_metrics()
         )
+        # some stuff that i think we can get from scalars
+        # TODO: can we get this data out of the clearML scalars?
+        pl_module.clearml_task.upload_artifact(
+            "training_corr", self.corr_dict["training"]
+        )
+        pl_module.clearml_task.upload_artifact(
+            "training_loss", self.loss_dict["training"]
+        )
+        pl_module.clearml_task.upload_artifact(
+            "validation_corr", self.corr_dict["validation"]
+        )
+        pl_module.clearml_task.upload_artifact(
+            "validation_loss", self.loss_dict["validation"]
+        )
 
+        # clean out memory—perhaps not necessary in case we are testing
+        # on multiple dataloaders
         pl_module.test_step_outputs = None
         return super().on_test_epoch_end(trainer, pl_module)
 
