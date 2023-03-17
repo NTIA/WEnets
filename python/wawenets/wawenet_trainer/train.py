@@ -49,6 +49,7 @@ def train(
     channels: int = None,
     num_workers: int = None,
     output_uri: Path = None,
+    split_column_name: str = None,
     **kwargs,
 ):
     target_list = "_".join(pred_metric)
@@ -101,7 +102,7 @@ def train(
         "PESQMOSLQO",
         "POLQAMOSLQO",
         "PEMO",
-        "ViSQOL3_C310",
+        "ViSQOL3_c310",
         "STOI",
         "ESTOI",
         "SIIBGauss",
@@ -120,6 +121,7 @@ def train(
         subsample_percent=data_fraction,
         match_segments=match_segments,
         num_workers=num_workers,
+        split_column_name=split_column_name,
     )
     data_module.setup()
 
@@ -278,7 +280,7 @@ if __name__ == "__main__":
         "--training_regime",
         type=str,
         help="the specific type of model you'd like to train. options are `default`, "
-        "`multitarget_obj_2022` and `multitarget_subj_obj_2022`.",
+        "`multitarget_obj_2022`, `multitarget_subj_obj_2022` and `multitarget_its_2022`.",
         default="default",
     )
 

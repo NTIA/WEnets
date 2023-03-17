@@ -119,27 +119,36 @@ class TestCallbacks(pl.Callback):
     def on_test_epoch_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        # here we do graph generation, denormalization, etc.
-        analyzer = WENetsAnalysis(pl_module.test_step_outputs, pl_module)
-        analyzer.log_performance_metrics()
+        # here we do graph generation, denormalization, etc., and we do it for each
+        # test dataloader.
+        for dataloader_name, outputs in zip(
+            trainer.datamodule.dataloader_names, pl_module.test_step_outputs
+        ):
+            analyzer = WENetsAnalysis(outputs, pl_module)
+            analyzer.log_performance_metrics(dataloader_name)
 
-        # log some stuff to clearml -- first, grouped performance based on impairment
-        impairment_performance_df = analyzer.grouped_performance_metrics("impairment")
-        pl_module.clearml_task.upload_artifact(
-            # bad name for backwards compatibility, i reserve the right to change it later
-            "test_grouped_results_table_df",
-            impairment_performance_df,
-        )
+            # log some stuff to clearml -- first, grouped performance based on impairment
+            impairment_performance_df = analyzer.grouped_performance_metrics(
+                "impairment"
+            )
+            pl_module.clearml_task.upload_artifact(
+                # bad name for backwards compatibility, i reserve the right to change it later
+                f"{dataloader_name}_grouped_results_table_df",
+                impairment_performance_df,
+            )
 
-        # now some per-condition measurements
-        per_cond_df = analyzer.per_condition_metrics(impairment_performance_df)
-        pl_module.clearml_task.upload_artifact("per_cond_df", per_cond_df)
-        # if we want per-language results, we would do that here and copy the pattern above
+            # now some per-condition measurements
+            per_cond_df = analyzer.per_condition_metrics(impairment_performance_df)
+            pl_module.clearml_task.upload_artifact(
+                f"{dataloader_name}_per_cond_df", per_cond_df
+            )
+            # if we want per-language results, we would do that here and copy the pattern above
 
-        # overall results
-        pl_module.clearml_task.upload_artifact(
-            "test_results_table_df", analyzer.target_performance_metrics()
-        )
+            # overall results
+            pl_module.clearml_task.upload_artifact(
+                f"{dataloader_name}_results_table_df",
+                analyzer.target_performance_metrics(),
+            )
         # some stuff that i think we can get from scalars
         # TODO: can we get this data out of the clearML scalars?
         pl_module.clearml_task.upload_artifact(
@@ -155,8 +164,7 @@ class TestCallbacks(pl.Callback):
             "validation_loss", self.loss_dict["validation"]
         )
 
-        # clean out memory—perhaps not necessary in case we are testing
-        # on multiple dataloaders
+        # clean out memory—perhaps not necessary
         pl_module.test_step_outputs = None
         return super().on_test_epoch_end(trainer, pl_module)
 

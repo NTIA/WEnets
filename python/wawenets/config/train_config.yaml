@@ -19,6 +19,7 @@ training_regimes:
     initial_learning_rate: 0.0001
     channels: 96
     num_workers:
+    split_column_name: "db"
   multitarget_obj_2022:
     dataset_name:
     batch_size: 60
@@ -44,6 +45,7 @@ training_regimes:
     initial_learning_rate: 0.0001
     channels: 96
     num_workers:
+    split_column_name: "db"
   multitarget_subj_obj_2022:
     dataset_name: TUBDataset
     batch_size: 60
@@ -57,10 +59,10 @@ training_regimes:
       - PESQMOSLQO
       - POLQAMOSLQO
       - PEMO
-      - VISQOL
+      - ViSQOL3_c310
       - STOI
       - ESTOI
-      - SIIBGAUS
+      - SIIBGauss
     groups_json:
     data_fraction:
     initial_weights:
@@ -73,3 +75,30 @@ training_regimes:
     initial_learning_rate: 0.0001
     channels: 96
     num_workers:
+    split_column_name: "db"
+  multitarget_its_2022:
+    dataset_name: ITSDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+      - POLQAMOSLQO
+      - PEMO
+      - ViSQOL3_c310
+      - STOI
+      - ESTOI
+      - SIIBGauss
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnet2020
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers:
+    split_column_name: "split"

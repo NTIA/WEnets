@@ -115,10 +115,10 @@ class NormalizePEMO(NormalizeGenericTarget):
     MAX = 1
 
 
-class NormalizeViSQOL3_C310(NormalizeGenericTarget):
-    """normalize ViSQOL3_C310 values to the range (-1, 1)."""
+class NormalizeViSQOL3_c310(NormalizeGenericTarget):
+    """normalize ViSQOL3_c310 values to the range (-1, 1)."""
 
-    name = "ViSQOL3_C310"
+    name = "ViSQOL3_c310"
     MIN = 1
     MAX = 5
 
@@ -232,7 +232,7 @@ def get_normalizer_class(
         "PESQMOSLQO": NormalizePESQMOSLQO,
         "POLQAMOSLQO": NormalizePOLQAMOSLQO,
         "PEMO": NormalizePEMO,
-        "ViSQOL3_C310": NormalizeViSQOL3_C310,
+        "ViSQOL3_c310": NormalizeViSQOL3_c310,
         "STOI": NormalizeSTOI,
         "ESTOI": NormalizeESTOI,
         "SIIBGauss": NormalizeSIIBGauss,

@@ -52,6 +52,70 @@ class DFDataset(Dataset):
         raise NotImplementedError()
 
 
+class ITSDataset(DFDataset):
+    """turn the ITS DF into a dataset"""
+
+    degraded_path = "filename"
+    language = "sourceDatasetLanguage"
+    impairment = "impairment"
+
+    def __init__(
+        self,
+        its_df: pd.DataFrame,
+        root_dir: str,
+        metric: str = None,
+        transform=None,
+        metadata: bool = False,
+        **kwargs,
+    ):
+        # `metadata` specifies whether or not to send metadata
+        #       along—for training we can save memory by not attaching metadata
+        #       to every sample
+        self.df = its_df
+        self.root_dir = Path(root_dir)
+        self.metric = metric
+        self.transform = transform
+        self.metadata = metadata
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, index):
+        row = self.df.iloc[index]
+        sample_path = self._get_sample_filepath(row)
+        sample_rate, sample = wavfile.read(sample_path)
+
+        sample = {
+            "sample_data": np.array([sample], dtype=np.float32),
+        }
+
+        if self.metric:
+            metrics = self.metric
+            sample["pred_metric"] = np.array(
+                [row[metric] for metric in metrics], dtype=np.float32
+            )
+
+        if self.metadata:
+            sample["sample_rate"] = sample_rate
+            sample["sample_fname"] = sample_path.name
+            sample["df_ind"] = index
+            sample["language"] = row[self.language]
+            sample["impairment"] = row[self.impairment]
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
+
+    def _get_ds_dir(self, filename):
+        return filename.split("_")[2].split(".")[0].replace("D", "")
+
+    def _get_sample_filepath(self, row):
+        filename = row[self.degraded_path]
+        ds_dir = self._get_ds_dir(filename)
+        return self.root_dir / ds_dir / filename
+
+
 # TODO: cleanup TUBdataset
 class TUBDataset(DFDataset):
     """turn the tub DF into a dataset"""
@@ -189,7 +253,7 @@ class TUBDataset(DFDataset):
 class WEnetsDataModule(LightningDataModule):
     def __init__(
         self,
-        csv_path: Union[str, Path],
+        df_path: Union[str, Path],
         batch_size: int,
         root_dir: str,
         metric: List[str],
@@ -204,7 +268,7 @@ class WEnetsDataModule(LightningDataModule):
         split_column_name: str = "db",
     ):
         super().__init__()
-        self.csv_path = csv_path
+        self.df_path = Path(df_path)
         self.batch_size = batch_size
         self.root_dir = root_dir
         self.metric = metric
@@ -217,6 +281,13 @@ class WEnetsDataModule(LightningDataModule):
         self.df_preprocessor = df_preprocessor
         self.df_preprocessor_args = df_preprocessor_args
         self.split_column_name = split_column_name
+
+        # train/test/val dataloaders
+        self.tub_train = None
+        self.tub_val = None
+        self.tub_test = None
+        self.tub_unseen = None
+        self.dataloader_names = None
 
     def _apply_transforms(self, df: pd.DataFrame, metadata: bool = False):
         """apply transforms, return concat dataset"""
@@ -238,6 +309,18 @@ class WEnetsDataModule(LightningDataModule):
             datasets.append(dataset)
         return ConcatDataset(datasets)
 
+    def _read_df(self):
+        # figure out what kind of file we're dealing with, then use
+        # the correct method to open the df
+        #
+        # this seems silly, shouldn't pandas be able to figure this out?
+        if "csv" in self.df_path.name:
+            return pd.read_csv(self.df_path)
+        elif "json" in self.df_path.name:
+            return pd.read_json(self.df_path)
+        else:
+            raise RuntimeError(f"help me read dfs from {self.df_path.suffix}s!")
+
     def setup(self, stage=None):
         """load the DF, split it, build datasets"""
 
@@ -245,7 +328,7 @@ class WEnetsDataModule(LightningDataModule):
         #       valid first sample?
 
         # load the DF
-        df = pd.read_csv(self.csv_path)
+        df = self._read_df()
 
         # preprocess the DF, if requested
         if self.df_preprocessor:
@@ -276,6 +359,14 @@ class WEnetsDataModule(LightningDataModule):
             self.tub_test = self._apply_transforms(test_df, metadata=True)
 
             # TODO: set up unseen dataset too! and handle one/multiple datasets gracefully
+            unseen_df = df[df[self.split_column_name].str.contains("UNSEEN")]
+
+            if len(unseen_df) == 0:
+                self.tub_unseen = None
+                return
+            if self.subsample_percent:
+                unseen_df = unseen_df.sample(frac=self.subsample_percent)
+            self.tub_unseen = self._apply_transforms(unseen_df, metadata=True)
 
     def train_dataloader(self):
         return DataLoader(
@@ -294,6 +385,21 @@ class WEnetsDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        return DataLoader(
+        test = DataLoader(
             self.tub_test, batch_size=self.batch_size, num_workers=self.num_workers
         )
+        unseen = None
+        if self.tub_unseen:
+            unseen = DataLoader(
+                self.tub_unseen,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+            )
+
+        dataloaders = {"test": test}
+        if unseen:
+            dataloaders["unseen"] = unseen
+
+        self.dataloader_names = [item for item in dataloaders.keys()]
+
+        return [item for item in dataloaders.values()]

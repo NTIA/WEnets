@@ -140,8 +140,10 @@ class WENetsAnalysis:
                 stacked.extend(item[field_name])
             return stacked
 
-    def log_performance_metrics(self):
-        return log_performance_metrics(self.test_outputs, self.pl_module, "test")
+    def log_performance_metrics(self, dataloader_name: str):
+        return log_performance_metrics(
+            self.test_outputs, self.pl_module, dataloader_name
+        )
 
     def _generate_performance_record(
         self, normalizer_name: str, df: pd.DataFrame
@@ -200,8 +202,6 @@ class WENetsAnalysis:
             )
             grouped_performance_records.extend(performance_records)
         group_df = pd.DataFrame(grouped_performance_records)
-        # TODO: use this DF to calculate the `per_cond_df`—calculate correlation of the
-        #       tavg and pavg
         return group_df
 
     def per_condition_metrics(self, grouped_df: pd.DataFrame):

@@ -151,7 +151,14 @@ class LitWAWEnetModule(pl.LightningModule):
         }
 
     def test_epoch_end(self, outputs) -> None:
-        self.test_step_outputs = outputs
+        # the shenanigans below are to handle inconsistency with how PTL delivers outputs
+        # from the test step when you have one or many test dataloaders.
+        #
+        # i'm probably not understanding something about the API, but this works
+        if isinstance(outputs[0], dict):
+            self.test_step_outputs = [outputs]
+        elif isinstance(outputs[0], list):
+            self.test_step_outputs = outputs
         return super().test_epoch_end(outputs)
 
     def configure_optimizers(self) -> Any:
