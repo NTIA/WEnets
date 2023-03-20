@@ -1,11 +1,14 @@
-from typing import List, Union
+from io import BytesIO
+from typing import List, Tuple, Union
 
 import torch
 import pytorch_lightning as pl
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from matplotlib import colors
 from sklearn.metrics import mean_absolute_error as mae
 
 from wawenet_trainer.lightning_model import LitWAWEnetModule
@@ -95,9 +98,15 @@ def _log_correlations(
 
 
 class WENetsAnalysis:
-    def __init__(self, test_outputs: List[dict], pl_module: pl.LightningModule) -> None:
+    def __init__(
+        self,
+        test_outputs: List[dict],
+        pl_module: LitWAWEnetModule,
+        dataloader_name: str,
+    ) -> None:
         self.test_outputs = test_outputs
         self.pl_module = pl_module
+        self.dataloader_name = dataloader_name
         # gotta stack all the outputs before we can make a DF.
         # but to do that, we need all the fields
         fields = test_outputs[0].keys()
@@ -147,7 +156,7 @@ class WENetsAnalysis:
 
     def _generate_performance_record(
         self, normalizer_name: str, df: pd.DataFrame
-    ) -> dict:
+    ) -> Tuple[dict, np.ndarray, np.ndarray]:
         # generate a dictionary containing performance metrics for a specific target
         performance_record = dict()
         y = df[normalizer_name].to_numpy()
@@ -155,6 +164,8 @@ class WENetsAnalysis:
         performance_record["target"] = normalizer_name
         performance_record["samp"] = len(df)
         performance_record["corr"] = _calculate_correlation(y, y_hat)
+        # converting to tensors and then back to numpy is a little painful but this way
+        # we get to use the same loss function that we used to train/test.
         loss = (
             self.pl_module.loss_fn(
                 torch.Tensor(y),
@@ -167,24 +178,38 @@ class WENetsAnalysis:
         performance_record["mae"] = mae(y, y_hat)
         performance_record["tavg"] = y.mean()
         performance_record["pavg"] = y_hat.mean()
-        return performance_record
+        return performance_record, y, y_hat
 
     def _per_target_performance_records(
-        self, df: pd.DataFrame, group_name: str = None
+        self, df: pd.DataFrame, group_name: str = None, scatter_plot: bool = False
     ) -> List[dict]:
         # generate performance metrics for all targets
         performance_records = list()
         for normalizer in self.pl_module.normalizers:
-            performance_record = self._generate_performance_record(normalizer.name, df)
+            performance_record, y, y_hat = self._generate_performance_record(
+                normalizer.name, df
+            )
             # if this `df` only contains data from a specific group, keep track of that here
             if group_name:
                 performance_record["group"] = group_name
             performance_records.append(performance_record)
+            # if we've been instructed to make a scatter plot, do it here.
+            if scatter_plot:
+                self._twod_hist(
+                    normalizer,
+                    y,
+                    y_hat,
+                    performance_record["corr"],
+                    performance_record["loss"],
+                    cmap=self.pl_module.scatter_color_map,
+                )
 
         return performance_records
 
     def target_performance_metrics(self) -> pd.DataFrame:
-        performance_records = self._per_target_performance_records(self.df)
+        performance_records = self._per_target_performance_records(
+            self.df, scatter_plot=True
+        )
         return pd.DataFrame(performance_records)
 
     def grouped_performance_metrics(self, group_column: str) -> pd.DataFrame:
@@ -223,3 +248,89 @@ class WENetsAnalysis:
             per_condition_metrics.append(record)
         per_condition_df = pd.DataFrame(per_condition_metrics)
         return per_condition_df
+
+    def _twod_hist(
+        self,
+        normalizer: NormalizeGenericTarget,
+        y: np.ndarray,
+        y_hat: np.ndarray,
+        correlation: float,
+        loss: float,
+        cmap: str = "Greys",
+    ):
+        fig, ax = plt.subplots(dpi=300, figsize=(6, 5))
+        beg, end, step = normalizer.tick_start_stop_step
+        x_start, x_stop = normalizer.MIN, normalizer.MAX + 0.1
+        y_start, y_stop = normalizer.MIN, normalizer.MAX + 0.1
+
+        # figure out if we need to show the histogram on log scale
+        if len(y.squeeze()) < 3000:
+            norm_fun = colors.Normalize()
+        else:
+            norm_fun = colors.LogNorm()
+
+        hax = ax.hist2d(
+            y.squeeze(),
+            y_hat.squeeze(),
+            bins=100,
+            norm=norm_fun,
+            cmap=cmap,
+            zorder=3,
+        )
+
+        ax.plot([x_start, x_stop], [y_start, y_stop], "--", zorder=4, color="0.8")
+
+        ax.set_xlabel(r"\textbf{target}")
+        ax.set_xbound([x_start, x_stop])
+        ax.set_ybound([y_start, y_stop])
+        ax.set_xticks(np.arange(beg, end, step))
+        ax.set_yticks(np.arange(beg, end, step))
+
+        ax.axis([x_start, x_stop, y_start, y_stop])
+        ax.annotate(
+            r"$\rho_{seg}" + f"={correlation:.3f}" + r"$",
+            xy=(0.600, 0.21),
+            xycoords="axes fraction",
+            fontsize="large",
+        )
+        ax.annotate(
+            r"$\textrm{RMSE}=" + f"{loss:.3f}" + r"$",
+            xy=(0.520, 0.12),
+            xycoords="axes fraction",
+            fontsize="large",
+        )
+        # ax.axis('equal')
+
+        ax.grid(zorder=-1)
+        cb = fig.colorbar(hax[3], ax=ax, extend="max")
+        cb.outline.set_visible(False)
+
+        ax.set_ylabel(r"\textbf{predicted target}")
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        # plt.subplots_adjust(wspace=0.05)
+        # this feels dirty: report the matplotlib fig all the way in here
+        self.pl_module.clearml_task.logger.report_matplotlib_figure(
+            title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
+        )
+        plt.show()
+
+        # fig_save_path = plot_parent
+        # if not fig_save_path.is_dir():
+        #     fig_save_path.mkdir(exist_ok=True)
+        buffer = BytesIO()
+        fig.savefig(
+            buffer,
+            format="png",
+            bbox_inches="tight",
+        )
+        self.pl_module.clearml_task.logger.report_media(
+            f"{self.dataloader_name}_{normalizer.name}",
+            series=f"{self.dataloader_name}",
+            stream=buffer,
+            file_extension="png",
+        )

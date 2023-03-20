@@ -50,6 +50,7 @@ def train(
     num_workers: int = None,
     output_uri: Path = None,
     split_column_name: str = None,
+    scatter_color_map: str = "Purples",
     **kwargs,
 ):
     target_list = "_".join(pred_metric)
@@ -62,8 +63,6 @@ def train(
             str(output_uri),
         ),
     )
-    # TODO: we've gotta pass the task around so we can upload artifacts
-    #       and some reporting too.
 
     # TODO: correctly specify `worker_init_fn`
     # TODO: incorporate num workers
@@ -140,6 +139,7 @@ def train(
         weights_path=initial_weights,
         normalizers=normalizers,
         clearml_task=task,
+        scatter_color_map=scatter_color_map,
     )
 
     # setup callbacks

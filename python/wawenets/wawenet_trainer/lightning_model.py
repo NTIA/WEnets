@@ -23,6 +23,7 @@ class LitWAWEnetModule(pl.LightningModule):
         unfrozen_layers: int = None,
         normalizers: List[NormalizeGenericTarget] = None,
         clearml_task: Task = None,
+        scatter_color_map: str = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -31,6 +32,7 @@ class LitWAWEnetModule(pl.LightningModule):
         self.unfrozen_layers = unfrozen_layers
         self.normalizers = normalizers
         self.clearml_task = clearml_task
+        self.scatter_color_map = scatter_color_map
 
         # we don't use this directly, but ptl does
         self.learning_rate = learning_rate

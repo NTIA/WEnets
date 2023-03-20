@@ -52,6 +52,7 @@ class NormalizeGenericTarget(NormalizeTarget):
     MIN = 1
     MAX = 5
     name = "¯\\_(ツ)_/¯"
+    tick_start_stop_step = (1, 6, 1)
 
     def __init__(self, norm_ind=0):
         super().__init__(norm_ind)
@@ -113,6 +114,7 @@ class NormalizePEMO(NormalizeGenericTarget):
     name = "PEMO"
     MIN = 0
     MAX = 1
+    tick_start_stop_step = (0, 1.1, 0.2)
 
 
 class NormalizeViSQOL3_c310(NormalizeGenericTarget):
@@ -129,6 +131,7 @@ class NormalizeSTOI(NormalizeGenericTarget):
     name = "STOI"
     MIN = 0.45
     MAX = 1
+    tick_start_stop_step = (0, 1.1, 0.2)
 
 
 class NormalizeESTOI(NormalizeGenericTarget):
@@ -137,6 +140,7 @@ class NormalizeESTOI(NormalizeGenericTarget):
     name = "ESTOI"
     MIN = 0.23
     MAX = 1
+    tick_start_stop_step = (0, 1.1, 0.2)
 
 
 class NormalizeSIIBGauss(NormalizeGenericTarget):
@@ -153,6 +157,7 @@ class NormalizeIUScaledMOS(NormalizeGenericTarget):
     name = "scaled_mos"
     MIN = 0
     MAX = 10
+    tick_start_stop_step = (1, 11, 1)
 
 
 class NormalizeIUMOS(NormalizeGenericTarget):

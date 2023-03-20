@@ -20,6 +20,7 @@ training_regimes:
     channels: 96
     num_workers:
     split_column_name: "db"
+    scatter_color_map: "Purples"
   multitarget_obj_2022:
     dataset_name:
     batch_size: 60
@@ -46,6 +47,7 @@ training_regimes:
     channels: 96
     num_workers:
     split_column_name: "db"
+    scatter_color_map: "Purples"
   multitarget_subj_obj_2022:
     dataset_name: TUBDataset
     batch_size: 60
@@ -76,6 +78,7 @@ training_regimes:
     channels: 96
     num_workers:
     split_column_name: "db"
+    scatter_color_map: "Greys"
   multitarget_its_2022:
     dataset_name: ITSDataset
     batch_size: 60
@@ -102,3 +105,4 @@ training_regimes:
     channels: 96
     num_workers:
     split_column_name: "split"
+    scatter_color_map: "Greens"

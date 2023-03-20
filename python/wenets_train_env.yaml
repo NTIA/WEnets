@@ -10,6 +10,7 @@ dependencies:
   - tqdm
   - pyyaml
   - click
+  - matplotlib
   - pip
   - poetry
   - pytest

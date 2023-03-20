@@ -124,7 +124,9 @@ class TestCallbacks(pl.Callback):
         for dataloader_name, outputs in zip(
             trainer.datamodule.dataloader_names, pl_module.test_step_outputs
         ):
-            analyzer = WENetsAnalysis(outputs, pl_module)
+            analyzer = WENetsAnalysis(
+                outputs, pl_module, dataloader_name=dataloader_name
+            )
             analyzer.log_performance_metrics(dataloader_name)
 
             # log some stuff to clearml -- first, grouped performance based on impairment
@@ -142,7 +144,12 @@ class TestCallbacks(pl.Callback):
             pl_module.clearml_task.upload_artifact(
                 f"{dataloader_name}_per_cond_df", per_cond_df
             )
-            # if we want per-language results, we would do that here and copy the pattern above
+
+            # now grouped performance based on language
+            language_performanec_df = analyzer.grouped_performance_metrics("language")
+            pl_module.clearml_task.upload_artifact(
+                f"{dataloader_name}_language_table_df", language_performanec_df
+            )
 
             # overall results
             pl_module.clearml_task.upload_artifact(

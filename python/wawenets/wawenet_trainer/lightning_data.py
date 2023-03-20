@@ -358,7 +358,6 @@ class WEnetsDataModule(LightningDataModule):
             # be sure to send the metadata through so we can do fun analysis :)
             self.tub_test = self._apply_transforms(test_df, metadata=True)
 
-            # TODO: set up unseen dataset too! and handle one/multiple datasets gracefully
             unseen_df = df[df[self.split_column_name].str.contains("UNSEEN")]
 
             if len(unseen_df) == 0:
