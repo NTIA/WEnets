@@ -7,6 +7,7 @@ import torch
 import numpy as np
 
 from wawenet_trainer.analysis import log_performance_metrics, WENetsAnalysis
+from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.transforms import NormalizeGenericTarget
 
 # set up callbacks here. this is the tricky one, maybe
@@ -20,7 +21,7 @@ from wawenet_trainer.transforms import NormalizeGenericTarget
 #
 # otherwise we'd have some nice separation
 
-
+# TODO: better name for this—these are callbacks for each phase, not just test
 class TestCallbacks(pl.Callback):
     def __init__(self, normalizers: List[NormalizeGenericTarget] = None) -> None:
         self.normalizers = normalizers
@@ -35,14 +36,14 @@ class TestCallbacks(pl.Callback):
         super().__init__()
 
     def on_validation_start(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         return super().on_validation_start(trainer, pl_module)
 
     def on_validation_batch_end(
         self,
         trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        pl_module: LitWAWEnetModule,
         outputs,  #: Optional[STEP_OUTPUT],
         batch: Any,
         batch_idx: int,
@@ -56,7 +57,7 @@ class TestCallbacks(pl.Callback):
         )
 
     def on_validation_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         performance_metrics = log_performance_metrics(
             pl_module.val_step_outputs, pl_module, "validation epoch"
@@ -69,14 +70,14 @@ class TestCallbacks(pl.Callback):
         return super().on_validation_epoch_end(trainer, pl_module)
 
     def on_validation_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         return super().on_validation_end(trainer, pl_module)
 
     def on_train_batch_end(
         self,
         trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        pl_module: LitWAWEnetModule,
         outputs,  #: STEP_OUTPUT,
         batch: Any,
         batch_idx: int,
@@ -87,7 +88,7 @@ class TestCallbacks(pl.Callback):
         return super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
 
     def on_train_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         performance_metrics = log_performance_metrics(
             pl_module.training_step_outputs, pl_module, "training epoch"
@@ -98,15 +99,13 @@ class TestCallbacks(pl.Callback):
         pl_module.train_step_outputs = None
         return super().on_train_epoch_end(trainer, pl_module)
 
-    def on_test_start(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ) -> None:
+    def on_test_start(self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule) -> None:
         return super().on_test_start(trainer, pl_module)
 
     def on_test_batch_end(
         self,
         trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
+        pl_module: LitWAWEnetModule,
         outputs,  #: Optional[STEP_OUTPUT],
         batch: Any,
         batch_idx: int,
@@ -117,7 +116,7 @@ class TestCallbacks(pl.Callback):
         )
 
     def on_test_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         # here we do graph generation, denormalization, etc., and we do it for each
         # test dataloader.
@@ -133,7 +132,7 @@ class TestCallbacks(pl.Callback):
             impairment_performance_df = analyzer.grouped_performance_metrics(
                 "impairment"
             )
-            pl_module.clearml_task.upload_artifact(
+            pl_module.log_artifact(
                 # bad name for backwards compatibility, i reserve the right to change it later
                 f"{dataloader_name}_grouped_results_table_df",
                 impairment_performance_df,
@@ -141,41 +140,29 @@ class TestCallbacks(pl.Callback):
 
             # now some per-condition measurements
             per_cond_df = analyzer.per_condition_metrics(impairment_performance_df)
-            pl_module.clearml_task.upload_artifact(
-                f"{dataloader_name}_per_cond_df", per_cond_df
-            )
+            pl_module.log_artifact(f"{dataloader_name}_per_cond_df", per_cond_df)
 
             # now grouped performance based on language
             language_performanec_df = analyzer.grouped_performance_metrics("language")
-            pl_module.clearml_task.upload_artifact(
+            pl_module.log_artifact(
                 f"{dataloader_name}_language_table_df", language_performanec_df
             )
 
             # overall results
-            pl_module.clearml_task.upload_artifact(
+            pl_module.log_artifact(
                 f"{dataloader_name}_results_table_df",
                 analyzer.target_performance_metrics(),
             )
         # some stuff that i think we can get from scalars
         # TODO: can we get this data out of the clearML scalars?
-        pl_module.clearml_task.upload_artifact(
-            "training_corr", self.corr_dict["training"]
-        )
-        pl_module.clearml_task.upload_artifact(
-            "training_loss", self.loss_dict["training"]
-        )
-        pl_module.clearml_task.upload_artifact(
-            "validation_corr", self.corr_dict["validation"]
-        )
-        pl_module.clearml_task.upload_artifact(
-            "validation_loss", self.loss_dict["validation"]
-        )
+        pl_module.log_artifact("training_corr", self.corr_dict["training"])
+        pl_module.log_artifact("training_loss", self.loss_dict["training"])
+        pl_module.log_artifact("validation_corr", self.corr_dict["validation"])
+        pl_module.log_artifact("validation_loss", self.loss_dict["validation"])
 
         # clean out memory—perhaps not necessary
         pl_module.test_step_outputs = None
         return super().on_test_epoch_end(trainer, pl_module)
 
-    def on_test_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ) -> None:
+    def on_test_end(self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule) -> None:
         return super().on_test_end(trainer, pl_module)

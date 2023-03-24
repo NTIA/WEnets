@@ -1,7 +1,10 @@
+import json
+
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Union
 
 import torch
+import pandas as pd
 import pytorch_lightning as pl
 
 from clearml import Task
@@ -23,7 +26,9 @@ class LitWAWEnetModule(pl.LightningModule):
         unfrozen_layers: int = None,
         normalizers: List[NormalizeGenericTarget] = None,
         clearml_task: Task = None,
+        task_name: str = "default_task_name",
         scatter_color_map: str = None,
+        output_uri: str = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -32,6 +37,8 @@ class LitWAWEnetModule(pl.LightningModule):
         self.unfrozen_layers = unfrozen_layers
         self.normalizers = normalizers
         self.clearml_task = clearml_task
+        self.task_name = task_name
+        self.output_uri = output_uri
         self.scatter_color_map = scatter_color_map
 
         # we don't use this directly, but ptl does
@@ -56,9 +63,25 @@ class LitWAWEnetModule(pl.LightningModule):
             for params in all_params[: -self.unfrozen_layers]:
                 params.requires_grad = False
 
-    def _upload_clearml_artifact(self, artifact_name: str, artifact: Any):
-        """fail gracefully if we don't have a clearml task"""
+    def _log_artifact_to_disk(
+        self, artifact_name: str, artifact: Union[pd.DataFrame, dict, list]
+    ):
+        # i guess we assume here that `self.output_uri` is a local path
+        output_path = Path(self.output_uri) / self.task_name
+        if isinstance(artifact, pd.DataFrame):
+            artifact_path = output_path / f"{artifact_name}_df.json"
+            artifact.to_json(artifact_path)
+        elif isinstance(artifact, dict) or isinstance(artifact, list):
+            artifact_path = output_path / f"{artifact_name}.json"
+            with open(artifact_path, "w") as json_fp:
+                json.dump(artifact, json_fp)
+        else:
+            raise RuntimeError("Is your artifact generator running? better go catch it")
+
+    def log_artifact(self, artifact_name: str, artifact: Any):
+        """log your stuff to the right place"""
         if not self.clearml_task:
+            self._log_artifact_to_disk(artifact_name, artifact)
             return
         self.clearml_task.upload_artifact(artifact_name, artifact)
 

@@ -312,25 +312,29 @@ class WENetsAnalysis:
         ax.spines["left"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-        # plt.subplots_adjust(wspace=0.05)
         # this feels dirty: report the matplotlib fig all the way in here
-        self.pl_module.clearml_task.logger.report_matplotlib_figure(
-            title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
-        )
-        plt.show()
+        #
+        # commenting for now because it didn't work. it felt dirty anyway.
+        # maybe i can just return the fig and then report it from the callback.
+        #
+        # plt.subplots_adjust(wspace=0.05)
+        # self.pl_module.clearml_task.logger.report_matplotlib_figure(
+        #     title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
+        # )
+        # plt.show()
 
-        # fig_save_path = plot_parent
-        # if not fig_save_path.is_dir():
-        #     fig_save_path.mkdir(exist_ok=True)
-        buffer = BytesIO()
-        fig.savefig(
-            buffer,
-            format="png",
-            bbox_inches="tight",
-        )
-        self.pl_module.clearml_task.logger.report_media(
-            f"{self.dataloader_name}_{normalizer.name}",
-            series=f"{self.dataloader_name}",
-            stream=buffer,
-            file_extension="png",
-        )
+        # # fig_save_path = plot_parent
+        # # if not fig_save_path.is_dir():
+        # #     fig_save_path.mkdir(exist_ok=True)
+        # buffer = BytesIO()
+        # fig.savefig(
+        #     buffer,
+        #     format="png",
+        #     bbox_inches="tight",
+        # )
+        # self.pl_module.clearml_task.logger.report_media(
+        #     f"{self.dataloader_name}_{normalizer.name}",
+        #     series=f"{self.dataloader_name}",
+        #     stream=buffer,
+        #     file_extension="png",
+        # )

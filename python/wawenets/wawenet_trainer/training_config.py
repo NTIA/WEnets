@@ -28,9 +28,17 @@ def training_params(training_regime: str = "default") -> dict:
     return config
 
 
-# TODO: get the user dir and make a place to put the training results
+# TODO: document this behavior in the training script
 def get_results_path():
     user_home_path = Path(os.path.expanduser("~"))
     results_path = user_home_path / "wenets_training_artifacts"
     results_path.mkdir(parents=True, exist_ok=True)
     return results_path
+
+
+def clearml_config_exists():
+    user_home_path = Path(os.path.expanduser("~"))
+    clearml_conf_path = user_home_path / "clearml.conf"
+    if clearml_conf_path.exists():
+        return True
+    return False

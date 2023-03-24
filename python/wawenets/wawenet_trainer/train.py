@@ -8,12 +8,13 @@ from clearml import Task
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import TensorBoardLogger
 from torchvision import transforms
 
 from wawenet_trainer.callbacks import TestCallbacks
 from wawenet_trainer.lightning_data import WEnetsDataModule
 from wawenet_trainer.lightning_model import LitWAWEnetModule
-from wawenet_trainer.training_config import training_params
+from wawenet_trainer.training_config import clearml_config_exists, training_params
 from wawenet_trainer.transforms import (
     AudioToTensor,
     get_normalizer_class,
@@ -27,6 +28,13 @@ from wawenet_trainer.transforms import (
 def get_class(class_name: str, module_name: str) -> LitWAWEnetModule:
     module = importlib.import_module(module_name)
     return getattr(module, class_name)
+
+
+def setup_tb_logger(task_name: str, output_uri: str):
+    tb_logger = TensorBoardLogger(output_uri, name=task_name)
+    trainer_kwargs = {"logger": tb_logger}
+    ptl_module_kwargs = {"task_name": task_name, "output_uri": output_uri}
+    return trainer_kwargs, ptl_module_kwargs
 
 
 def train(
@@ -51,18 +59,35 @@ def train(
     output_uri: Path = None,
     split_column_name: str = None,
     scatter_color_map: str = "Purples",
+    logging: str = "local",
     **kwargs,
 ):
     target_list = "_".join(pred_metric)
-    # TODO: is this fixed yet?
-    Task.add_requirements("setuptools", "59.5.0")
-    task = Task.init(
-        project_name=project_name,
-        task_name=f"{target_list}_from_script",  # TODO: better name, with timestamp
-        output_uri=str(
-            str(output_uri),
-        ),
-    )
+    task_name = f"{target_list}_wawenets"  # TODO: better name, with timestamp
+
+    # are we logging to clearML?
+    if logging == "clearml":
+        if clearml_config_exists():
+            # TODO: is this fixed yet?
+            Task.add_requirements("setuptools", "59.5.0")
+            task = Task.init(
+                project_name=project_name,
+                task_name=task_name,
+                output_uri=str(
+                    str(output_uri),
+                ),
+            )
+            trainer_kwargs = {}
+            ptl_module_kwargs = {
+                "clearml_task": task,
+                "task_name": task_name,
+                "output_uri": output_uri,
+            }
+        else:
+            print("falling back to local tensorboard logging")
+            trainer_kwargs, ptl_module_kwargs = setup_tb_logger(task_name, output_uri)
+    else:
+        trainer_kwargs, ptl_module_kwargs = setup_tb_logger(task_name, output_uri)
 
     # TODO: correctly specify `worker_init_fn`
     # TODO: incorporate num workers
@@ -124,7 +149,6 @@ def train(
     )
     data_module.setup()
 
-    # here starts newer PTL interface, i think
     # grab the model class, IE LitWAWEnet2020
     # TODO: maybe this level of flexibility is unwarranted—it's a little confusing
     #       specifying the correct args
@@ -138,8 +162,8 @@ def train(
         unfrozen_layers=unfrozen_layers,
         weights_path=initial_weights,
         normalizers=normalizers,
-        clearml_task=task,
         scatter_color_map=scatter_color_map,
+        **ptl_module_kwargs,
     )
 
     # setup callbacks
@@ -158,6 +182,7 @@ def train(
         auto_scale_batch_size="binsearch",
         enable_progress_bar=True,
         log_every_n_steps=10,  # TODO: relax this
+        **trainer_kwargs,
     )
 
     if not test_only:
@@ -282,6 +307,15 @@ if __name__ == "__main__":
         help="the specific type of model you'd like to train. options are `default`, "
         "`multitarget_obj_2022`, `multitarget_subj_obj_2022` and `multitarget_its_2022`.",
         default="default",
+    )
+    parser.add_argument(
+        "--logging",
+        type=str,
+        help="how to track experiment results. options are `local` and `clearml`. the "
+        "`clearml.conf` file must exist in the root of the home dir running the training "
+        "script. if no conf file exists, the program will fall back to local tracking "
+        "in an attempt to prevent inadvertent data leaks.",
+        default="local",
     )
 
     args = parser.parse_args()
