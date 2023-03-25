@@ -1,5 +1,6 @@
 import json
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Union
 
@@ -29,6 +30,7 @@ class LitWAWEnetModule(pl.LightningModule):
         task_name: str = "default_task_name",
         scatter_color_map: str = None,
         output_uri: str = None,
+        init_timestamp: str = "",
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -40,6 +42,13 @@ class LitWAWEnetModule(pl.LightningModule):
         self.task_name = task_name
         self.output_uri = output_uri
         self.scatter_color_map = scatter_color_map
+
+        # if there's no init time, make one. this helps us keep track of training artifacts
+        # in the absense of an experiment tracking system
+        self.init_timestamp = init_timestamp
+        if not self.init_timestamp:
+            now = datetime.now().replace(microsecond=0).isoformat()
+            self.init_timestamp = now.replace(":", "-")
 
         # we don't use this directly, but ptl does
         self.learning_rate = learning_rate
@@ -67,14 +76,21 @@ class LitWAWEnetModule(pl.LightningModule):
         self, artifact_name: str, artifact: Union[pd.DataFrame, dict, list]
     ):
         # i guess we assume here that `self.output_uri` is a local path
-        output_path = Path(self.output_uri) / self.task_name
+        output_path = Path(self.output_uri) / self.task_name / self.init_timestamp
+        output_path.mkdir(exist_ok=True)
+        artifact_path = output_path / f"{artifact_name}.json"
         if isinstance(artifact, pd.DataFrame):
-            artifact_path = output_path / f"{artifact_name}_df.json"
+            # ensure there's something in the filename that lets future you know
+            # the contents are suitable for loading into a pandas dataframe
+            if "df" not in artifact_name:
+                artifact_path = output_path / f"{artifact_name}_df.json"
             artifact.to_json(artifact_path)
         elif isinstance(artifact, dict) or isinstance(artifact, list):
-            artifact_path = output_path / f"{artifact_name}.json"
+            # kind of ugly way to detect and handle tensors before serializing
+            if isinstance(artifact, list) and isinstance(artifact[0], torch.Tensor):
+                artifact = [float(item) for item in artifact]
             with open(artifact_path, "w") as json_fp:
-                json.dump(artifact, json_fp)
+                json.dump(artifact, json_fp, default=str)
         else:
             raise RuntimeError("Is your artifact generator running? better go catch it")
 

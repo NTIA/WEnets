@@ -379,7 +379,7 @@ class WEnetsDataModule(LightningDataModule):
         return DataLoader(
             self.tub_val,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
         )
 
