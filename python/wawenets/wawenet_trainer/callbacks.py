@@ -21,8 +21,8 @@ from wawenet_trainer.transforms import NormalizeGenericTarget
 #
 # otherwise we'd have some nice separation
 
-# TODO: better name for this—these are callbacks for each phase, not just test
-class TestCallbacks(pl.Callback):
+
+class WAWEnetCallbacks(pl.Callback):
     def __init__(self, normalizers: List[NormalizeGenericTarget] = None) -> None:
         self.normalizers = normalizers
         self.loss_dict = {
@@ -119,7 +119,9 @@ class TestCallbacks(pl.Callback):
         self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
         # here we do graph generation, denormalization, etc., and we do it for each
-        # test dataloader.
+        # test dataloader. results from different test dataloaders will be in a list
+        # here we do a bit of a hack to match them to the names assigned in
+        # lightning_data.WEnetsDataModule.test_dataloader
         for dataloader_name, outputs in zip(
             trainer.datamodule.dataloader_names, pl_module.test_step_outputs
         ):
@@ -153,6 +155,10 @@ class TestCallbacks(pl.Callback):
                 f"{dataloader_name}_results_table_df",
                 analyzer.target_performance_metrics(),
             )
+
+            # kitchen sink—for the inevitable "what if we slice the data this
+            # way?" question
+            pl_module.log_artifact(f"{dataloader_name}_all_data", analyzer.df)
         # some stuff that i think we can get from scalars
         # TODO: can we get this data out of the clearML scalars?
         pl_module.log_artifact("training_corr", self.corr_dict["training"])

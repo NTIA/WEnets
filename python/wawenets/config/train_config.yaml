@@ -18,7 +18,7 @@ training_regimes:
     lightning_module_name: LitWAWEnet2020
     initial_learning_rate: 0.0001
     channels: 96
-    num_workers:
+    num_workers: 0
     split_column_name: "db"
     scatter_color_map: "Purples"
   multitarget_obj_2022:
@@ -45,7 +45,7 @@ training_regimes:
     lightning_module_name: LitWAWEnet2020
     initial_learning_rate: 0.0001
     channels: 96
-    num_workers:
+    num_workers: 0
     split_column_name: "db"
     scatter_color_map: "Purples"
   multitarget_subj_obj_2022:
@@ -76,7 +76,7 @@ training_regimes:
     lightning_module_name: LitWAWEnet2020
     initial_learning_rate: 0.0001
     channels: 96
-    num_workers:
+    num_workers: 0
     split_column_name: "db"
     scatter_color_map: "Greys"
   multitarget_its_2022:
@@ -103,6 +103,6 @@ training_regimes:
     lightning_module_name: LitWAWEnet2020
     initial_learning_rate: 0.0001
     channels: 96
-    num_workers:
+    num_workers: 0
     split_column_name: "split"
     scatter_color_map: "Greens"

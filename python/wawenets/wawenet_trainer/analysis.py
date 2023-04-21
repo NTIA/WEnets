@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import torch
 import pytorch_lightning as pl
@@ -21,7 +21,7 @@ the results of these analysis to clearML, which we can query later on
 and do any further postprocessing we desire.
 
 when we're evaluating model performance, we get this information for each
-test batch/step:
+test batch/ste (this comes from LitWAWEnetModule.test_step):
  {
     step loss
     y
@@ -36,8 +36,8 @@ sharing code.
 
 items to consider reporting:
 1. DONE--per_cond_df
-2. result vectors for each target
-3. result vectors for each target, by condition (?)
+2. DONE (via full DF output) --result vectors for each target
+3. DONE (via full DF output) --result vectors for each target, by condition (?)
     this might be a bit much?
 4. DONE--`test_results_table`, make it a DF, and use pandas to write out markdown tables
     columns: samples, correlation, rmse, mae, tavg, pavg
@@ -54,6 +54,26 @@ TODO: will need to make a mechanism for remapping group names, esp.
 def log_performance_metrics(
     outputs: dict, pl_module: pl.LightningModule, phase: str
 ) -> dict:
+    """
+    processes outputs from train/test/val batches and epochs and generates performance
+    measurements.
+
+    Parameters
+    ----------
+    outputs : dict
+        outputs from `LitWAWEnetModule.train_step`, `LitWAWEnetModule.test_step`,
+        or `LitWAWEnetModule.val_step`. should at minimum contain a `y` and
+        `y_hat` field.
+    pl_module : pl.LightningModule
+        an instance of `LitWAWEnetModule`
+    phase : str
+        the phase in the training process to which the outputs belong
+
+    Returns
+    -------
+    dict
+        contains the loss and correlatons calculated from the input data.
+    """
     # if we've gotten all batch outputs (instead of a single batch output),
     # IE at the end of an epoch, stack. only wanna stack this stuff once
     if isinstance(outputs, list):
@@ -70,7 +90,23 @@ def log_performance_metrics(
 
 def _calculate_correlation(
     y: Union[torch.tensor, np.ndarray], y_hat: Union[torch.tensor, np.ndarray]
-):
+) -> np.float64:
+    """
+    thin wrapper around `np.corrcoef`—grabs the relevant element from a
+    correlation matrix. assumes inputs are one-dimensional.
+
+    Parameters
+    ----------
+    y : Union[torch.tensor, np.ndarray]
+        truth-data values for a given target.
+    y_hat : Union[torch.tensor, np.ndarray]
+        corresponding prediction values for a given talget
+
+    Returns
+    -------
+    np.float64
+        the pearson's correlation of the 1-d input data
+    """
     corr_matrix = np.corrcoef(y, y_hat)
     return corr_matrix[0, 1]
 
@@ -80,7 +116,27 @@ def _log_correlations(
     y_hat: torch.tensor,
     pl_module: pl.LightningModule,
     phase: str,
-):
+) -> Dict[str, np.float64]:
+    """
+    calculates individual and mean pearson correlations for given target and
+    predicted values.
+
+    Parameters
+    ----------
+    y : torch.tensor
+        truth-data values for a given target
+    y_hat : torch.tensor
+        corresponding prediction values for a given target
+    pl_module : pl.LightningModule
+        instance of `LitWAWEnetModule
+    phase : str
+        current phase in the training process, either train, test, or validation
+
+    Returns
+    -------
+    Dict[str, np.float64]
+        mean and per-target correlations for the input data
+    """
     # number of columns should match number of targets
     assert y.shape[1] == len(pl_module.normalizers)
     correlations = dict()
@@ -98,12 +154,37 @@ def _log_correlations(
 
 
 class WENetsAnalysis:
+    """makes a dataframe from the outputs we get at the end of a testing epoch
+    and performs analysis using that dataframe
+
+    specifically, `LitWAWEnetModule.test_step` returns a dictionary of info for each batch.
+    these dictionaries are concatenated into a list and that list is accessible in
+    `LitWAWEnetModule.test_epoch_end` and is stored as a class attribute.
+    `WAWEnetCallbacks.on_test_epoch_end` accesses that attribute and uses it to
+    initialize an instance of `WeNetsAnalysis`.
+
+    supports callbacks.WAWEnetCallbacks"""
+
     def __init__(
         self,
         test_outputs: List[dict],
         pl_module: LitWAWEnetModule,
         dataloader_name: str,
     ) -> None:
+        """
+        `WENetsAnalysis init fn`
+
+        Parameters
+        ----------
+        test_outputs : List[dict]
+            model predictions coming from `LitWAWEnetModule.test_epoch_end`
+        pl_module : LitWAWEnetModule
+            provides access to loging, normalizations when we need them
+        dataloader_name : str
+            name of the dataloader used to generate model predictions
+        """
+        # we have to pass the pl_module around because that's how things are
+        # actually logged
         self.test_outputs = test_outputs
         self.pl_module = pl_module
         self.dataloader_name = dataloader_name
@@ -117,12 +198,16 @@ class WENetsAnalysis:
         }
 
         # explode and denormalize the target columns in the y/yhat tensors
+        # explode: each column contains predictions for a distinct target.
+        #          here we put them into their own field in the dictionary.
+        # denormalize: the predictions are still normalized to [-1, 1]. here
+        #           we put them back into the target's native range.
         for index, normalizer in enumerate(pl_module.normalizers):
             stacked[normalizer.name] = normalizer.denorm(stacked["y"][:, index])
             stacked[f"{normalizer.name}_hat"] = normalizer.denorm(
                 stacked["y_hat"][:, index]
             )
-        # delete y/y_hat, otherwise pandas will complain
+        # delete y/y_hat, otherwise pandas will complain when we make a DF
         del stacked["y"]
         del stacked["y_hat"]
         # delete test_step_loss because its length is number of steps, not number
@@ -136,6 +221,30 @@ class WENetsAnalysis:
     def _stack_field(
         test_outputs: List[dict], field_name: str
     ) -> Union[torch.Tensor, list]:
+        """
+        traverses a list of dictionaries. extracts the lists or tensors
+        present in the dictionary and stacks them into a single list or tensor.
+
+        Parameters
+        ----------
+        test_outputs : List[dict]
+            the outputs available in `LitWAWEnetModule.test_step_outputs` after
+            completion of a test epoch
+        field_name : str
+            the name of the field in each dictionary that contains a list
+            or tensor that should be stacked.
+
+        Returns
+        -------
+        Union[torch.Tensor, list]
+            all of the data contained in each dictionary with the field `field_name`,
+            stacked into a single tensor or list.
+        """
+
+        # extracts lists/tensors from an iterable of dictionaries and concatenates
+        # them.
+
+        # List[Dict[str: any]] -> Union[List, Tensor]
         if isinstance(test_outputs[0][field_name], torch.Tensor):
             if len(test_outputs[0][field_name].shape) == 1:
                 # handle any tensors that are 1D
@@ -149,14 +258,25 @@ class WENetsAnalysis:
                 stacked.extend(item[field_name])
             return stacked
 
-    def log_performance_metrics(self, dataloader_name: str):
-        return log_performance_metrics(
-            self.test_outputs, self.pl_module, dataloader_name
-        )
-
     def _generate_performance_record(
         self, normalizer_name: str, df: pd.DataFrame
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
+        """
+        generate a dictionary containing performance metrics for
+        a specific target
+
+        Parameters
+        ----------
+        normalizer_name : str
+            the name of the target for which metrics should be extracted
+        df : pd.DataFrame
+            a dataframe in the format generated by self.__init__
+
+        Returns
+        -------
+        Tuple[dict, np.ndarray, np.ndarray]
+            a performance record dictionary, target values, predicted values
+        """
         # generate a dictionary containing performance metrics for a specific target
         performance_record = dict()
         y = df[normalizer_name].to_numpy()
@@ -183,7 +303,32 @@ class WENetsAnalysis:
     def _per_target_performance_records(
         self, df: pd.DataFrame, group_name: str = None, scatter_plot: bool = False
     ) -> List[dict]:
-        # generate performance metrics for all targets
+        """
+        can be used to generate performance records for a specified group
+        or for aggregated results
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            a dataframe in the format generated by self.__init__
+        group_name : str, optional
+            if `df` has been grouped by a column, provide the name of that group
+            here, by default None
+        scatter_plot : bool, optional
+            whether or not to generate a scatter plot of target vs. predicted
+            values, by default False
+
+        Returns
+        -------
+        List[dict]
+            a list containing performance record dictionaries. performance record
+            dictionaries contain information about the data and predictions
+            associated with the target.
+        """
+
+        # generate performance metrics for all targets—this works be cause each target
+        # has a column for target values and predictions in the DF—the result of "exploding"
+        # in `__init__`
         performance_records = list()
         for normalizer in self.pl_module.normalizers:
             performance_record, y, y_hat = self._generate_performance_record(
@@ -207,16 +352,41 @@ class WENetsAnalysis:
         return performance_records
 
     def target_performance_metrics(self) -> pd.DataFrame:
+        """
+        used to generate overall results
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe where each row has columns that contain
+            performance information for a given target.
+        """
+        # used to generate overall results
         performance_records = self._per_target_performance_records(
             self.df, scatter_plot=True
         )
         return pd.DataFrame(performance_records)
 
     def grouped_performance_metrics(self, group_column: str) -> pd.DataFrame:
-        # generate performance metrics for all targets, but also grouped by
-        # the values in `group_column`
-        #
-        # this generates a new `df` which can then also be processed
+        """
+        generate performance metrics for all targets, but also grouped by
+        the values in `group_column`
+
+        Parameters
+        ----------
+        group_column : str
+            the name of the column that should be used to group rows
+            of the dataframe.
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe with num_groups x num_targets rows, where
+            each row contains performance information for group by target
+            combinations.
+        """
+        # this generates a new `df` which can then also be processed,
+        # e.g., by `per_condition_metrics`
         grouped_performance_records = list()
         # loop over all possible groups
         for group_name, gdf in self.df.groupby(by=group_column):
@@ -229,7 +399,25 @@ class WENetsAnalysis:
         group_df = pd.DataFrame(grouped_performance_records)
         return group_df
 
-    def per_condition_metrics(self, grouped_df: pd.DataFrame):
+    def per_condition_metrics(self, grouped_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        calculates "per condition" performance metrics. in short, losses and
+        correlations are calculated for targets and predictions on each "group",
+        and then a loss and correlation is calculated on the resulting values.
+        assumes that `grouped_df` is an output from `grouped_performance_metrics`
+        and that `group_column` represents an impairment of some kind.
+
+        Parameters
+        ----------
+        grouped_df : pd.DataFrame
+            a dataframe generated by `grouped_performance_metrics`
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe with one row per target and columns
+            `per_condition_correlation` and `per_condition_loss`
+        """
         # group by target, then do correlation and loss for each
         per_condition_metrics = list()
         for group_name, gdf in grouped_df.groupby(by="target"):
@@ -258,6 +446,33 @@ class WENetsAnalysis:
         loss: float,
         cmap: str = "Greys",
     ):
+        """
+        generates a 2d histogram of target value vs. predicted value.
+        like a scatter plot, except you can see what's happening when
+        there's lots of overlap.
+
+        Parameters
+        ----------
+        normalizer : NormalizeGenericTarget
+            the normalizer for the target that represents the `y` and
+            `y_hat` data being provided.
+        y : np.ndarray
+            target values
+        y_hat : np.ndarray
+            predicted values
+        correlation : float
+            the correlation between `y` and `y_hat`. passed in here so we only
+            calculate it once.
+        loss : float
+            the loss between `y` and `y_hat`.
+        cmap : str, optional
+            the matplotlib colormap name to be used to provide false color
+            for the 2d histogram, by default "Greys"
+        """
+        # generates a 2D histogram of target value vs. predicted value.
+
+        # like a scatter plot, except you can see what's happing when there's
+        # lots of overlap.
         fig, ax = plt.subplots(dpi=300, figsize=(6, 5))
         beg, end, step = normalizer.tick_start_stop_step
         x_start, x_stop = normalizer.MIN, normalizer.MAX + 0.1

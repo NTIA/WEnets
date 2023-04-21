@@ -11,7 +11,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from torchvision import transforms
 
-from wawenet_trainer.callbacks import TestCallbacks
+from wawenet_trainer.callbacks import WAWEnetCallbacks
 from wawenet_trainer.lightning_data import WEnetsDataModule
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.training_config import clearml_config_exists, training_params
@@ -55,7 +55,7 @@ def train(
     lightning_module_name: str = "",
     initial_learning_rate: float = None,
     channels: int = None,
-    num_workers: int = None,
+    num_workers: int = 0,
     output_uri: Path = None,
     split_column_name: str = None,
     scatter_color_map: str = "Purples",
@@ -172,7 +172,7 @@ def train(
     # setup callbacks
     callbacks = [
         LearningRateMonitor(logging_interval="epoch"),
-        TestCallbacks(normalizers=normalizers),
+        WAWEnetCallbacks(normalizers=normalizers),
     ]
 
     # the progress bar is nice if training locally, but it clogs clearml logs
@@ -299,7 +299,8 @@ if __name__ == "__main__":
         "--num_workers",
         type=int,
         help="number of CPU workers that should be used to compute transforms/etc. "
-        "and read data from disk",
+        "and read data from disk. default is 0",
+        default=0,
     )
     parser.add_argument(
         "--output_uri",
