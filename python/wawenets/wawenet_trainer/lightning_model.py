@@ -11,6 +11,7 @@ import pytorch_lightning as pl
 from clearml import Task
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
+from wawenet_trainer.log_performance import log_performance_metrics
 from wawenet_trainer.transforms import NormalizeGenericTarget
 
 # set up the lightning module here
@@ -61,8 +62,7 @@ class LitWAWEnetModule(pl.LightningModule):
 
         # some structured storage for train/val/test analysis
         self.training_step_outputs: list = None
-        self.val_step_outputs: list = None
-        self.val_loss_mean: float = None
+        self.val_epoch_performance: dict = None
         self.test_step_outputs: list = None
 
     def _freeze_layers(self):
@@ -125,19 +125,11 @@ class LitWAWEnetModule(pl.LightningModule):
     def training_epoch_end(self, outputs) -> None:
         # `outputs` is a list of dictionaries for all batches in the epoch, returned
         # by `training_step`
-        #
-        # i'm struggling a little bit with what should be in the model vs. what should
-        # be in the callbacks. weird that this _can_happen in two places based on their
-        # API
         print(f"completed epoch {self.current_epoch}")
-        # # is this
-        # train_loss_mean = torch.stack([item["loss"] for item in outputs]).mean()
-        # self.log("avg_train_loss", train_loss_mean)
-        # # the same as this
-        # y = torch.vstack([item["y"] for item in outputs])
-        # y_hat = torch.vstack([item["y_hat"] for item in outputs])
-        # epoch_loss = self.loss_fn(y_hat, y)
-        # self.log("training epoch loss", epoch_loss)
+        # this is the sanctioned way to get the outputs to the callback/somewhere
+        # other than this method:
+        # https://lightning.ai/docs/pytorch/stable/common/
+        #   lightning_module.html#train-epoch-level-operations
         self.training_step_outputs = outputs
         return super().training_epoch_end(outputs)
 
@@ -154,24 +146,13 @@ class LitWAWEnetModule(pl.LightningModule):
         }
 
     def validation_epoch_end(self, outputs):
-        # TODO: denormalize before doing RMSE?
-        # TODO: is this
-        val_loss_mean = torch.stack([item["val_batch_loss"] for item in outputs]).mean()
-        self.log("avg_val_loss", val_loss_mean)
-        # # the same as this?
-        # y = torch.vstack([item["y"] for item in outputs])
-        # y_hat = torch.vstack([item["y_hat"] for item in outputs])
-        # epoch_loss = self.loss_fn(y_hat, y)
-        # self.log("validation epoch loss", epoch_loss)
-        self.val_step_outputs = outputs
-        super().validation_epoch_end(outputs)
-        return {"avg_val_loss": val_loss_mean}
+        # doing loss/correlation calculations here instead of in the callback because we need
+        # the loss for the learning rate scheduler and there's not a way that i know of to get
+        # data from a callback back to here.
+        performance_metrics = log_performance_metrics(outputs, self, "validation epoch")
+        self.val_epoch_performance = performance_metrics
 
-    def on_validation_end(self) -> None:
-        """this will calculate average validation loss and log it"""
-        # i think this is the right function for the new API?
-        # actually i'm not certain it will get used.
-        return super().on_validation_end()
+        return super().validation_epoch_end(outputs)
 
     def test_step(self, batch, batch_idx, *args: Any, dataloader_idx=0, **kwargs: Any):
         x = batch["sample_data"]
@@ -217,7 +198,7 @@ class LitWAWEnetModule(pl.LightningModule):
                 optimizer, **scheduler_kwargs
             ),
             # the key for this monitor has to be `self.log`ged! weird!!!
-            "monitor": "avg_val_loss",
+            "monitor": "validation epoch loss",
         }
         # TODO: figure out how commenting this out affects the new API
         # return super().configure_optimizers()

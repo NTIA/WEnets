@@ -1,57 +1,66 @@
-from typing import Any, List, Optional
+from typing import Any, List
 
 import pytorch_lightning as pl
 
-import torch
-
-import numpy as np
-
 from wawenet_trainer.analysis import log_performance_metrics, WENetsAnalysis
 from wawenet_trainer.lightning_model import LitWAWEnetModule
-from wawenet_trainer.transforms import NormalizeGenericTarget
 
-# set up callbacks here. this is the tricky one, maybe
+"""
+set up callbacks here.
 
-
-# we have to do some gymnastics because:
-# 1. `pl.Callback.on_[training/validation]_batch_end` receive outputs from the model
-# 2. `pl.Callback.on_[training/validation]_epoch_end` don't receive outputs from the model
-# 3. `pl.LightningModule.[training/validation]_epoch_end` in the pl.Module DO receive outputs from the
-#     model
-#
-# otherwise we'd have some nice separation
+we have to do some gymnastics because:
+1. `pl.Callback.on_[training/validation]_batch_end` receive outputs from the model
+2. `pl.Callback.on_[training/validation]_epoch_end` don't receive outputs from the model
+3. `pl.LightningModule.[training/validation]_epoch_end` in the pl.Module DO receive outputs from the
+    model
+"""
 
 
 class WAWEnetCallbacks(pl.Callback):
-    def __init__(self, normalizers: List[NormalizeGenericTarget] = None) -> None:
-        self.normalizers = normalizers
-        self.loss_dict = {
+    """a class to handle pytorch lightning callbacks; logs training/validation/test performance
+    and initiates analysis where appropriate. register this class when instantiating pl.Trainer.
+
+    unimplemented callbacks are omitted."""
+
+    def __init__(self) -> None:
+        self.epoch_losses = {
             "training": list(),
             "validation": list(),
         }
-        self.corr_dict = {
+        self.epoch_correlations = {
             "training": list(),
             "validation": list(),
         }
         super().__init__()
 
-    def on_validation_start(
-        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
-    ) -> None:
-        return super().on_validation_start(trainer, pl_module)
-
     def on_validation_batch_end(
         self,
         trainer: "pl.Trainer",
         pl_module: LitWAWEnetModule,
-        outputs,  #: Optional[STEP_OUTPUT],
+        outputs: dict,
         batch: Any,
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
-        performance_metrics = log_performance_metrics(
-            outputs, pl_module, "validation batch"
-        )
+        """
+        uses `pl_module` to log loss and correlation.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+
+        pl_module : LitWAWEnetModule
+
+        outputs : dict
+            delivered by LitWAWEnetModule.validation_step
+        batch : Any
+            contents of the current minibatch, both input and output.
+        batch_idx : int
+            batch index number, aka step number
+        dataloader_idx : int
+            index of the dataloader currently in use for training/validation
+        """
+        _ = log_performance_metrics(outputs, pl_module, "validation batch")
         return super().on_validation_batch_end(
             trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
         )
@@ -59,67 +68,87 @@ class WAWEnetCallbacks(pl.Callback):
     def on_validation_epoch_end(
         self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
-        performance_metrics = log_performance_metrics(
-            pl_module.val_step_outputs, pl_module, "validation epoch"
-        )
-        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
-        self.loss_dict["validation"].append(performance_metrics["loss"])
-        self.corr_dict["validation"].append(performance_metrics["correlations"])
-        pl_module.val_loss_mean = performance_metrics["loss"]
-        pl_module.val_step_outputs = None
-        return super().on_validation_epoch_end(trainer, pl_module)
+        """
+        uses data stored in `pl_module` to update the record of epoch losses and correlations
 
-    def on_validation_end(
-        self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
-    ) -> None:
-        return super().on_validation_end(trainer, pl_module)
+        Parameters
+        ----------
+        trainer : pl.Trainer
+
+        pl_module : LitWAWEnetModule
+        """
+        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
+        self.epoch_losses["validation"].append(pl_module.val_epoch_performance["loss"])
+        self.epoch_correlations["validation"].append(
+            pl_module.val_epoch_performance["correlations"]
+        )
+        return super().on_validation_epoch_end(trainer, pl_module)
 
     def on_train_batch_end(
         self,
         trainer: "pl.Trainer",
         pl_module: LitWAWEnetModule,
-        outputs,  #: STEP_OUTPUT,
+        outputs: dict,
         batch: Any,
         batch_idx: int,
     ) -> None:
-        performance_metrics = log_performance_metrics(
-            outputs, pl_module, "training batch"
-        )
+        """
+        uses `pl_module` to log loss and correlation.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+
+        pl_module : LitWAWEnetModule
+
+        outputs : dict
+            delivered by LitWAWEnetModule.validation_step
+        batch : Any
+            contents of the current minibatch, both input and output.
+        batch_idx : int
+            batch index number, aka step number
+        dataloader_idx : int
+            index of the dataloader currently in use for training/validation
+        """
+        _ = log_performance_metrics(outputs, pl_module, "training batch")
         return super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
 
     def on_train_epoch_end(
         self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
+        """
+        uses data stored in `pl_module` to log performance metrics and update
+        the record of epoch losses and correlations
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+
+        pl_module : LitWAWEnetModule
+        """
         performance_metrics = log_performance_metrics(
             pl_module.training_step_outputs, pl_module, "training epoch"
         )
         # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
-        self.loss_dict["training"].append(performance_metrics["loss"])
-        self.corr_dict["training"].append(performance_metrics["correlations"])
+        self.epoch_losses["training"].append(performance_metrics["loss"])
+        self.epoch_correlations["training"].append(performance_metrics["correlations"])
         pl_module.train_step_outputs = None
         return super().on_train_epoch_end(trainer, pl_module)
-
-    def on_test_start(self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule) -> None:
-        return super().on_test_start(trainer, pl_module)
-
-    def on_test_batch_end(
-        self,
-        trainer: "pl.Trainer",
-        pl_module: LitWAWEnetModule,
-        outputs,  #: Optional[STEP_OUTPUT],
-        batch: Any,
-        batch_idx: int,
-        dataloader_idx: int,
-    ) -> None:
-        return super().on_test_batch_end(
-            trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
-        )
 
     def on_test_epoch_end(
         self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule
     ) -> None:
-        # here we do graph generation, denormalization, etc., and we do it for each
-        # test dataloader. results from different test dataloaders will be in a list
+        """
+        here we do graph generation, denormalization, logging etc., for our test data
+        and we do it for each test dataloader.
+
+        Parameters
+        ----------
+        trainer : pl.Trainer
+
+        pl_module : LitWAWEnetModule
+        """
+        # results from different test dataloaders will be in a list
         # here we do a bit of a hack to match them to the names assigned in
         # lightning_data.WEnetsDataModule.test_dataloader
         for dataloader_name, outputs in zip(
@@ -159,16 +188,14 @@ class WAWEnetCallbacks(pl.Callback):
             # kitchen sink—for the inevitable "what if we slice the data this
             # way?" question
             pl_module.log_artifact(f"{dataloader_name}_all_data", analyzer.df)
+
         # some stuff that i think we can get from scalars
         # TODO: can we get this data out of the clearML scalars?
-        pl_module.log_artifact("training_corr", self.corr_dict["training"])
-        pl_module.log_artifact("training_loss", self.loss_dict["training"])
-        pl_module.log_artifact("validation_corr", self.corr_dict["validation"])
-        pl_module.log_artifact("validation_loss", self.loss_dict["validation"])
+        pl_module.log_artifact("training_corr", self.epoch_correlations["training"])
+        pl_module.log_artifact("training_loss", self.epoch_losses["training"])
+        pl_module.log_artifact("validation_corr", self.epoch_correlations["validation"])
+        pl_module.log_artifact("validation_loss", self.epoch_losses["validation"])
 
         # clean out memory—perhaps not necessary
         pl_module.test_step_outputs = None
         return super().on_test_epoch_end(trainer, pl_module)
-
-    def on_test_end(self, trainer: "pl.Trainer", pl_module: LitWAWEnetModule) -> None:
-        return super().on_test_end(trainer, pl_module)

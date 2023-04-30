@@ -172,7 +172,7 @@ def train(
     # setup callbacks
     callbacks = [
         LearningRateMonitor(logging_interval="epoch"),
-        WAWEnetCallbacks(normalizers=normalizers),
+        WAWEnetCallbacks(),
     ]
 
     # the progress bar is nice if training locally, but it clogs clearml logs
