@@ -188,7 +188,7 @@ class RightPadSampleTensor:
         return sample
 
 
-class AudioToTensor(object):
+class AudioToTensor:
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample):
@@ -201,7 +201,7 @@ class AudioToTensor(object):
         return sample
 
 
-class NormalizeAudio(object):
+class NormalizeAudio:
     """Normalize numpy audio arrays to the range (0, 1)."""
 
     def __call__(self, sample):
@@ -213,7 +213,7 @@ class NormalizeAudio(object):
         return sample
 
 
-class InvertAudioPhase(object):
+class InvertAudioPhase:
     """Invert the phase of an audio vector for data augmentation purposes."""
 
     def __call__(self, sample):

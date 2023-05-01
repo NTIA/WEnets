@@ -1,4 +1,4 @@
-from typing import Any, Dict, Callable, List, Union
+from typing import Any, Dict, Callable, List, Tuple, Union
 from pathlib import Path
 
 import numpy as np
@@ -9,68 +9,48 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 from pytorch_lightning import LightningDataModule
 
-# set up lightning data module here
-# set up a parent class, and then make children for the tub/IU datasets
+# set up datasets and the lightning data module here
 
 
-class DFDataset(Dataset):
-    def __init__(
-        self, df: pd.DataFrame, metric: List[str] = None, transform=None
-    ) -> None:
-        super().__init__()
-        self.df = df
-        self.metric = metric
-        self.transform = transform
+class ITSDataset(Dataset):
+    """a dataset suitable for loading speech segments used to train the models
+    published in the 2020 ICASSP paper"""
 
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, index) -> Dict[str, Any]:
-        """to be overloaded, probably"""
-        row = self.df.iloc[index]
-        sample_path = self._get_sample_filepath(row)
-        sample_rate, sample = wavfile.read(sample_path)
-
-        sample = {
-            "sample_rate": sample_rate,
-            # get the dimension and the type correct
-            "sample_data": np.array([sample], dtype=np.float32),
-            "sample_fname": sample_path.name,
-        }
-
-        if self.metric:
-            sample["pred_metric"] = np.array(
-                [row[metric] for metric in self.metric], dtype=np.float32
-            )
-
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
-
-    def _get_sample_filepath(self, row):
-        raise NotImplementedError()
-
-
-class ITSDataset(DFDataset):
-    """turn the ITS DF into a dataset"""
-
-    degraded_path = "filename"
-    language = "sourceDatasetLanguage"
+    # the key where a relative path to a file can be found
+    degraded_path_key = "filename"
+    # the key that specifies the language of a speech segment
+    language_key = "sourceDatasetLanguage"
+    # the key where the speech processing impairment can be found
     impairment = "impairment"
 
     def __init__(
         self,
         its_df: pd.DataFrame,
         root_dir: str,
-        metric: str = None,
-        transform=None,
+        metric: Union[str, list] = None,
+        transform: Callable = None,
         metadata: bool = False,
         **kwargs,
     ):
-        # `metadata` specifies whether or not to send metadata
-        #       along—for training we can save memory by not attaching metadata
-        #       to every sample
+        """
+        initializes ITSDataset
+
+        Parameters
+        ----------
+        its_df : pd.DataFrame
+            a dataframe containing records in the style used to train models published
+            in the 2020 ICASSP paper
+        root_dir : str
+            parent directory containing directories for all sub datasets (300, 301, etc.)
+        metric : Union[str, list], optional
+            the metric or metrics that should be used as targets, by default None
+        transform : Callable, optional
+            to be applied to input data or metadata, by default None
+        metadata : bool, optional
+            whether or not to send metadata along—for training we can save memory
+            by not attaching metadata to every sample, but for testing we can do
+            more sophisticated analysis by utilizing metadata, by default False
+        """
         self.df = its_df
         self.root_dir = Path(root_dir)
         self.metric = metric
@@ -80,7 +60,22 @@ class ITSDataset(DFDataset):
     def __len__(self):
         return len(self.df)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> dict:
+        """
+        retrieves the speech segment found at `index` in `self.df`
+
+        Parameters
+        ----------
+        index : int
+            index in `self.df` to be loaded
+
+        Returns
+        -------
+        dict
+            contains `sample_data` (40k samples of speech data in a numpy array)
+            at minimum, additionally `pred_metric` (a numpy array of target values)
+            if requested, and optionally metadata relevant to analysis.
+        """
         row = self.df.iloc[index]
         sample_path = self._get_sample_filepath(row)
         sample_rate, sample = wavfile.read(sample_path)
@@ -99,7 +94,7 @@ class ITSDataset(DFDataset):
             sample["sample_rate"] = sample_rate
             sample["sample_fname"] = sample_path.name
             sample["df_ind"] = index
-            sample["language"] = row[self.language]
+            sample["language"] = row[self.language_key]
             sample["impairment"] = row[self.impairment]
 
         if self.transform:
@@ -107,41 +102,108 @@ class ITSDataset(DFDataset):
 
         return sample
 
-    def _get_ds_dir(self, filename):
+    def _get_ds_dir(self, filename: str) -> str:
+        """
+        extracts the subdataset directory using the known format of filenames in the
+        ITS df
+
+        Parameters
+        ----------
+        filename : str
+            filename found using `self.degraded_path_key`
+
+        Returns
+        -------
+        str
+            directory where the subdataset is located
+        """
         return filename.split("_")[2].split(".")[0].replace("D", "")
 
-    def _get_sample_filepath(self, row):
-        filename = row[self.degraded_path]
+    def _get_sample_filepath(self, row: pd.Series) -> Path:
+        """
+        constructs a Path object given a row from a dataframe
+
+        Parameters
+        ----------
+        row : pd.Series
+            a row that's been selected from `self.df`
+
+        Returns
+        -------
+        Path
+            path to the file described in `row`
+        """
+        filename = row[self.degraded_path_key]
         ds_dir = self._get_ds_dir(filename)
         return self.root_dir / ds_dir / filename
 
 
 # TODO: cleanup TUBdataset
-class TUBDataset(DFDataset):
-    """turn the tub DF into a dataset"""
+# TODO: are we going to release our augmented TUB CSV?
+class TUBDataset(Dataset):
+    """a dataset suitable for loading speech segments from the TUB dataset"""
 
+    # the key where a relative path to a file can be found
     degraded_path = "filepath_deg"
+    # the key that specifies the language of a speech segment
     language = "lang"
+    # the key where the speech processing impairment can be found
     impairment = "con_description"
 
     def __init__(
         self,
         tub_df,
         root_dir,
-        metric=None,
-        transform=None,
+        metric: Union[str, list] = None,
+        transform: Callable = None,
         segments: Union[List[str], str] = None,
-        match_segments=None,
+        match_segments: List[str] = None,
         metadata: bool = False,
     ):
-        # `metadata` specifies whether or not to send metadata
-        #       along—for training we can save memory by not attaching metadata
-        #       to every sample
+        """
+        initializes TUBDataset
+
+        Parameters
+        ----------
+        tub_df : pd.Dataframe
+            a dataframe containing records loaded from the TUB dataset CSV augmented
+            with valid subsegment information
+        root_dir : str
+            parent directory containing the files listed in the TUB dataset CSV
+        metric : Union[str, list], optional
+            the metric or metrics that should be used as targets, by default None
+        transform : Callable, optional
+            to be applied to input data or metadata, by default None
+        segments : Union[List[str], str], optional
+            the subsegments of any given file that should be used for training purposes.
+            if None, only the first 48k samples of a given file are used. if one or more
+            subsegments are specified, 48k samples with SAF > 0.5 will be read from files
+            in temporal order. segments are specified using column names, e.g. "seg_1" for
+            the first valid segment in a speech file. default is None
+        match_segments : List[str], optional
+            in the case of full reference targets, we have the option of targeting a value
+            calculated by that FR target over the whole speech file or targeting a value
+            calculated over just the 48k sample subsegment. this kwarg allows you to specify
+            for which FR targets should subsegment quality estimates be used. default is None,
+            and in that case, per-file FR target values will be used. this can lead to
+            significantly less-accurate performance.
+        metadata : bool, optional
+            whether or not to send metadata along—for training we can save memory
+            by not attaching metadata to every sample, but for testing we can do
+            more sophisticated analysis by utilizing metadata, by default False
+
+        Raises
+        ------
+        TypeError
+            if an unexpected data type is specified for `segments`
+        """
         self.df = tub_df
         self.root_dir = Path(root_dir)
         self.metric = metric
         self.transform = transform
         self.metadata = metadata
+        # make sure we don't try to us a single character as a segment
+        # indicator
         if isinstance(segments, list):
             self.segments = segments
         elif isinstance(segments, str):
@@ -149,10 +211,9 @@ class TUBDataset(DFDataset):
         else:
             raise TypeError("😭")
         self.match_segments = match_segments
-        if match_segments:
-            self.match_these = set(match_segments)
-            self.dont_match = list(set(self.metric) - self.match_these)
 
+        # create a "decoder ring" mapping file + subsegment to an overall
+        # dataset index.
         # torn on the wisdom of doing this bit here
         # but we gotta remove the items where there's no valid speech
         # subsegment for the subsegment specified.
@@ -171,23 +232,47 @@ class TUBDataset(DFDataset):
         self.index_mapper = pd.concat(self.index_mapper, ignore_index=True)
 
     def __len__(self):
+        # we did all the hard work of figuring out what files had multiple
+        # segments in `__init__` and stored that information in `index_mapper`,
+        # so the length of our dataset is actually the length of `self.index_mapper`.
         return len(self.index_mapper)
 
-    def _get_row_seg(self, index):
-        # convert from concat'ed index to original DF index
+    def _get_row_seg(self, index: int) -> Tuple[pd.Series, str]:
+        """
+        converts from concat'ed index to original DF index + segment number
+
+        Parameters
+        ----------
+        index : int
+            index into the dataset's overall length
+
+        Returns
+        -------
+        Tuple[pd.Series, str]
+            file information and specific segment number specified by `index`
+        """
         mapped_index, current_segment = self.index_mapper.iloc[index]
         # `.iloc` doesn't work here; indices coming in will not be in the
         # form 0, 1, ..., n - 1
         row = self.tub_df.loc[mapped_index]
         return row, current_segment
 
-    def _get_metadata(self, index):
-        # this is a nice idea, but using `ConcatDataset` in our datamodule setup
-        # makes using this impossible :(
-        row, _ = self.index_mapper.iloc[index]
-        return row
+    def __getitem__(self, index: int) -> dict:
+        """
+        retrieves the speech segment found at `index` in `self.index_mapper`
 
-    def __getitem__(self, index):
+        Parameters
+        ----------
+        index : int
+            index in `self.index_mapper` to be loaded
+
+        Returns
+        -------
+        dict
+            contains `sample_data` (40k samples of speech data in a numpy array)
+            at minimum, additionally `pred_metric` (a numpy array of target values)
+            if requested, and optionally metadata relevant to analysis.
+        """
         row, current_segment = self._get_row_seg(index)
         sample_path = self._get_sample_filepath(row)
         sample_rate, sample = wavfile.read(sample_path)
@@ -220,21 +305,88 @@ class TUBDataset(DFDataset):
 
         return sample
 
-    def _select_target_segment(self, current_segment):
-        # TODO: unit test
+    def _select_target_segment(self, current_segment: str) -> List[str]:
+        """
+        the ITS-modified TUB DF has columns with names in the form of
+        `seg_{SEGMENT_NUMBER}_{TARGET_NAME}` which contain target values for
+        a given target x segment combination. if per-segment FR target values have
+        been specifed via `self.match_segments`, this is where we convert from
+        selecting per-file target values to per-segment target values.
+
+        Parameters
+        ----------
+        current_segment : str
+            the name of the segment we are currently attempting to access, e.g.
+            `seg_1`
+
+        Returns
+        -------
+        List[str]
+            column names used to extract target x segment values from self.df
+        """
         metrics = [
             "_".join([current_segment, item]) if item in self.match_segments else item
             for item in self.metric
         ]
         return metrics
 
-    def _get_sample_filepath(self, row):
+    def _get_sample_filepath(self, row: pd.Series) -> Path:
+        """
+        constructs a Path object given a row from a dataframe
+
+        Parameters
+        ----------
+        row : pd.Series
+            a row that's been selected from `self.df`
+
+        Returns
+        -------
+        Path
+            path to the file described in `row`
+        """
         return self.root_dir / row[self.degraded_path]
 
-    def _seconds_to_samples(self, second, sample_rate):
-        return np.floor(second * sample_rate)
+    def _seconds_to_samples(self, second: float, sample_rate: int) -> float:
+        """
+        accepts a float value representing seconds and converts to a sample value
+        based on `sample_rate`
 
-    def _parse_subsegment(self, row, segment, sample_rate):
+        Parameters
+        ----------
+        second : float
+            a number in seconds that should be converted to samples
+        sample_rate : int
+            number of samples per second
+
+        Returns
+        -------
+        float
+            sample number corresponding to `second`
+        """
+        return int(np.floor(second * sample_rate))
+
+    def _parse_subsegment(
+        self, row: pd.Series, segment: str, sample_rate: int
+    ) -> Tuple[int, int]:
+        """
+        calculate the samples that should be read from a speech file given a row index,
+        segment name, and sample rate
+
+        Parameters
+        ----------
+        row : pd.Series
+            a row from `self.df`
+        segment : str
+            the name of the segment to be extracted from the file described in `row`
+        sample_rate : int
+            the sample rate of the file described in `row`
+
+        Returns
+        -------
+        Tuple[int, int]
+            start and stop sample numbers specifying which samples to read from the file
+            described in `row`
+        """
         subseg_name = row[segment]
         start_sec = float(subseg_name.split(" ")[1]) / 10
         stop_sec = float(subseg_name.split(" ")[2]) / 10
@@ -242,7 +394,30 @@ class TUBDataset(DFDataset):
         stop_sample = int(stop_sec * sample_rate)
         return start_sample, stop_sample
 
-    def _retrieve_subsegment(self, sample, sample_rate, row, subseg):
+    def _retrieve_subsegment(
+        self, sample: np.ndarray, sample_rate: int, row: int, subseg: str
+    ) -> np.ndarray:
+        """
+        selects the appropriate subsample of `sample` given `sample_rate`, information
+        from a specific row of `self.df`, and a specified subsegment.
+
+        Parameters
+        ----------
+        sample : np.ndarray
+            the entire waveform read from the file specified in `row`. (horribly inefficient,
+            😭)
+        sample_rate : int
+            sample rate of the file described in `row`
+        row : int
+            information about a given file found in `self.df`
+        subseg : str
+            the name of the subsegment which should be returned, e.g. "seg_1"
+
+        Returns
+        -------
+        np.ndarray
+            waveform samples corresponding to `subseg` from the file described in `row`
+        """
         start_sample, stop_sample = self._parse_subsegment(row, subseg, sample_rate)
         return sample[start_sample:stop_sample]
 
@@ -289,8 +464,27 @@ class WEnetsDataModule(LightningDataModule):
         self.tub_unseen = None
         self.dataloader_names = None
 
-    def _apply_transforms(self, df: pd.DataFrame, metadata: bool = False):
-        """apply transforms, return concat dataset"""
+    def _apply_transforms(self, df: pd.DataFrame, metadata: bool = False) -> Dataset:
+        """
+        builds one dataset for each transform in `self.transforms`. when training
+        WAWEnets, the convention has been to apply inverse-phase-augmentation (IPA) to
+        each speech sample once per epoch. this is achieved by having two sets of
+        transforms: one without IPA and one with IPA. yes, it differs from traditional
+        augmentation strategy, but it's how the nets described in the papers were trained
+        so that's how it's implemented here.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            contains target values, metadata, and filename information for speech samples
+        metadata : bool, optional
+            whether or not metadata should be propagated in sample data, by default False
+
+        Returns
+        -------
+        Dataset
+            a concatenated dataset containing
+        """
         # we have to do this because of how training is set up---
         # we've got original wavforms and IPA-ed wavforms
         # so we apply the different transforms to the dataset, resulting in multiple
@@ -309,11 +503,21 @@ class WEnetsDataModule(LightningDataModule):
             datasets.append(dataset)
         return ConcatDataset(datasets)
 
-    def _read_df(self):
-        # figure out what kind of file we're dealing with, then use
-        # the correct method to open the df
-        #
-        # this seems silly, shouldn't pandas be able to figure this out?
+    def _read_df(self) -> pd.DataFrame:
+        """
+        figure out what kind of file we're dealing with, then use
+        the correct method to open the df
+
+        Returns
+        -------
+        pd.DataFrame
+            contains target values, metadata, and filesystem locations for a dataset
+
+        Raises
+        ------
+        RuntimeError
+            if the file type is neither CSV nor JSON
+        """
         if "csv" in self.df_path.name:
             return pd.read_csv(self.df_path)
         elif "json" in self.df_path.name:
@@ -321,8 +525,16 @@ class WEnetsDataModule(LightningDataModule):
         else:
             raise RuntimeError(f"help me read dfs from {self.df_path.suffix}s!")
 
-    def setup(self, stage=None):
-        """load the DF, split it, build datasets"""
+    def setup(self, stage: str = None):
+        """
+        load the DF, split it, build datasets
+
+        Parameters
+        ----------
+        stage : str, optional
+            what part of the training process is calling this method, either
+            "fit" or "test", by default None
+        """
 
         # TODO: get rid of any rows in the DF where there's somehow no
         #       valid first sample?
@@ -367,7 +579,15 @@ class WEnetsDataModule(LightningDataModule):
                 unseen_df = unseen_df.sample(frac=self.subsample_percent)
             self.tub_unseen = self._apply_transforms(unseen_df, metadata=True)
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
+        """
+        sets up the training dataloader
+
+        Returns
+        -------
+        DataLoader
+            dataloader for the training split
+        """
         return DataLoader(
             self.tub_train,
             batch_size=self.batch_size,
@@ -375,7 +595,15 @@ class WEnetsDataModule(LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
+        """
+        sets up the validation dataloader
+
+        Returns
+        -------
+        DataLoader
+            dataloader for the validation split
+        """
         return DataLoader(
             self.tub_val,
             batch_size=self.batch_size,
@@ -383,7 +611,16 @@ class WEnetsDataModule(LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> List[DataLoader]:
+        """
+        sets up the test dataloader, and if unseen data is available,
+        sets up the unseen dataloader as well.
+
+        Returns
+        -------
+        List[DataLoader]
+            contains dataloaders for test, and if available, unseen datasets
+        """
         test = DataLoader(
             self.tub_test, batch_size=self.batch_size, num_workers=self.num_workers
         )
@@ -399,6 +636,7 @@ class WEnetsDataModule(LightningDataModule):
         if unseen:
             dataloaders["unseen"] = unseen
 
+        # save the dataloader names for later in the testing process
         self.dataloader_names = [item for item in dataloaders.keys()]
 
         return [item for item in dataloaders.values()]
