@@ -25,7 +25,7 @@ the results of these analysis to clearML, which we can query later on
 and do any further postprocessing we desire.
 
 when we're evaluating model performance, we get this information for each
-test batch/ste (this comes from LitWAWEnetModule.test_step):
+test batch/step (this comes from LitWAWEnetModule.test_step):
  {
     step loss
     y
@@ -37,18 +37,6 @@ test batch/ste (this comes from LitWAWEnetModule.test_step):
 we can think of this as a list of records from which we can make a dataframe. then
 we can use `df.groupby` to handle per-condition and per-language calculations while
 sharing code.
-
-items to consider reporting:
-1. DONE--per_cond_df
-2. DONE (via full DF output) --result vectors for each target
-3. DONE (via full DF output) --result vectors for each target, by condition (?)
-    this might be a bit much?
-4. DONE--`test_results_table`, make it a DF, and use pandas to write out markdown tables
-    columns: samples, correlation, rmse, mae, tavg, pavg
-5. DONE--`test_grouped_results_table`, make it a DF and use pandas to write out markdown tables
-6. DONE--training and validation correlation and loss at the end of each epoch.
-    but maybe not because this is already a scalar graph, and i think we can 
-    get at that data programmatically using the clearML api.
 
 TODO: will need to make a mechanism for remapping group names, esp.
       for the original ITS dataset

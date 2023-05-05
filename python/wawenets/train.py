@@ -2,13 +2,14 @@ import argparse
 import importlib
 
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Tuple, Union
 
 from clearml import Task
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
+from torch.utils.data import Dataset
 from torchvision import transforms
 
 from wawenet_trainer.callbacks import WAWEnetCallbacks
@@ -25,12 +26,46 @@ from wawenet_trainer.transforms import (
 # main training script
 
 
-def get_class(class_name: str, module_name: str) -> LitWAWEnetModule:
+def get_class(class_name: str, module_name: str) -> Union[LitWAWEnetModule, Dataset]:
+    """
+    kind of a hack to enable passing class names in from a configuration.
+    there's probably a better way to do this
+
+    Parameters
+    ----------
+    class_name : str
+        name of the class that should be loaded from `module_name`
+    module_name : str
+        the module from which `class_name` should be loaded
+
+    Returns
+    -------
+    Union[LitWAWEnetModule, Dataset]
+        technically, this could return anything, but unless abused, we
+        expect one of these two types
+    """
     module = importlib.import_module(module_name)
     return getattr(module, class_name)
 
 
-def setup_tb_logger(task_name: str, output_uri: str):
+def setup_tb_logger(task_name: str, output_uri: str) -> Tuple[dict, dict]:
+    """
+    creates a tensorboard logger and generates relevant configuration for
+    pytorch lightning modules and pytorch lightning data modules
+
+    Parameters
+    ----------
+    task_name : str
+        the name of the task to be associated with this training run
+    output_uri : str
+        location where logs should be written
+
+    Returns
+    -------
+    Tuple[dict, dict]
+        dictionaries suitable for use as PTL module kwargs and PTL data module
+        kwargs, respectively
+    """
     tb_logger = TensorBoardLogger(output_uri, name=task_name)
     trainer_kwargs = {"logger": tb_logger}
     ptl_module_kwargs = {"task_name": task_name, "output_uri": output_uri}
@@ -62,12 +97,80 @@ def train(
     logging: str = "local",
     **kwargs,
 ):
+    """
+    implements a "simple" interface for training WAWEnets. configurations can be found
+    and defined in ./config/train_config.yaml. it is highly recommended to use one of
+    the default configurations.
+
+    Parameters
+    ----------
+    project_name : str, optional
+        name to be either be associated with a clearML task or used for
+        organization on disk, by default ""
+    dataset_name : str, optional
+        name of the dataset class to use from `wawenet_trainer.lightning_data`,
+        by default ""
+    batch_size : int, optional
+        batch size for training and testing, by default None
+    training_epochs : int, optional
+        number of epochs to train, by default None
+    seed : int, optional
+        seed pytorch and try for some consistent training, by default None
+    pred_metric : List[str], optional
+        the metric(s) to use as target(s) for training, by default ""
+    groups_json : str, optional
+        file path pointing to a json containing group definitions, by default ""
+    data_fraction : float, optional
+        fraction of data to train with, by default None
+    initial_weights : str, optional
+        path to initial model weights, by default None
+    unfrozen_layers : int, optional
+        the number of param layers to leave unfrozen,
+        counting back from the output of the model, by default None
+    segments : List[str], optional
+        names of the 3-second subsegments to include when training, e.g. `seg_1`,
+        by default ""
+    csv_path : str, optional
+        path pointing to the CSV or JSON that contains data readable by
+        datasets found in `wawenet_trainer.lightning_data`, by default ""
+    data_root_path : str, optional
+        path pointing to the root of the input audio files, by default ""
+    test_only : bool, optional
+        if true, the net will not be trained before generating results,
+        by default False
+    lightning_module_name : str, optional
+        name of the model class that implements pl.LightningModule,
+        probably `LitWAWEnet2020` for best results, by default ""
+    initial_learning_rate : float, optional
+        learning rate used at the beginning of the training process, by default None
+    channels : int, optional
+        number of convolutional channels to be used when training, by default None
+    num_workers : int, optional
+        number of CPU workers that should be used to compute transforms/etc.
+        and read data from disk., by default 0
+    output_uri : Path, optional
+        directory where experiment artifacts should be stored. defaults to "
+        "`~/wenets_training_artifacts`, by default None
+    split_column_name : str, optional
+        the name of the column that specifies which part of the training process a
+        speech segment should be used for, by default None
+    scatter_color_map : str, optional
+        the matplotlib colormap name to be used to provide false color
+        for the 2d histogram, by default "Purples"
+    logging : str, optional
+        how to track experiment results. options are `local` and `clearml`. the
+        `clearml.conf` file must exist in the root of the home dir running the training
+        script. if no conf file exists, the program will fall back to local tracking
+        in an attempt to prevent inadvertent data leaks, by default "local"
+    """
     target_list = "_".join(pred_metric)
     task_name = f"{target_list}_wawenets"
 
     # are we logging to clearML?
     if logging == "clearml":
         if clearml_config_exists():
+            # TODO: convert print statements to logging?
+            print("using clearML to log training results")
             # clearML weirdly isn't finding stuff in `analysis.py`
             Task.add_requirements("matplotlib", "3.7.1")
             Task.add_requirements("pandas", "1.5.2")
@@ -87,7 +190,9 @@ def train(
                 "output_uri": output_uri,
             }
         else:
-            print("falling back to local tensorboard logging")
+            print(
+                "falling back to local tensorboard logging; no valid configuration exists"
+            )
             trainer_kwargs, ptl_module_kwargs = setup_tb_logger(task_name, output_uri)
     else:
         trainer_kwargs, ptl_module_kwargs = setup_tb_logger(task_name, output_uri)
@@ -96,8 +201,11 @@ def train(
     # TODO: incorporate num workers
     pl.seed_everything(seed)
 
+    # build up the list of normalizers we need for our targets. this is an input
+    # to the PTL module and is appended to our list of transforms, since
+    # target values must be normalized before being used for training
     normalizers = [
-        get_normalizer_class(metric, norm_ind=ind)
+        get_normalizer_class(metric, target_column_ind=ind)
         for ind, metric in enumerate(pred_metric)
     ]
 
@@ -107,7 +215,6 @@ def train(
         AudioToTensor(),
     ]
     speech_transforms.extend(normalizers)
-
     augment_transforms = [
         NormalizeAudio(),
         InvertAudioPhase(),
@@ -119,12 +226,13 @@ def train(
     augment_transforms = transforms.Compose(augment_transforms)
 
     transform_list = [speech_transforms, augment_transforms]
-    dataset_class = get_class(dataset_name, "wawenet_trainer.lightning_data")
 
+    # TODO: hmmm. set up a default here?
     if not segments:
         segments = ["seg_1"]
 
-    # next two items are a bit of a mess tbh
+    # TODO: next two items are a bit of a mess tbh. i'm not sure this is the right
+    # place for what is essentially configuration
     fr_target_names = {
         "PESQMOSLQO",
         "POLQAMOSLQO",
@@ -136,7 +244,8 @@ def train(
     }
     match_segments = [item for item in pred_metric if item in fr_target_names]
 
-    # set up a data module to use with training
+    # set up a ptl data module to use with training
+    dataset_class = get_class(dataset_name, "wawenet_trainer.lightning_data")
     data_module = WEnetsDataModule(
         csv_path,
         batch_size,
@@ -153,11 +262,10 @@ def train(
     data_module.setup()
 
     # grab the model class, IE LitWAWEnet2020
-    # TODO: maybe this level of flexibility is unwarranted—it's a little confusing
-    #       specifying the correct args
     lightning_module: LitWAWEnetModule = get_class(
         lightning_module_name, "wawenet_trainer.lightning_model"
     )
+    # set up a ptl module to use with training
     model = lightning_module(
         initial_learning_rate,
         num_targets=len(pred_metric),
@@ -206,9 +314,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--project_name",
         type=str,
-        help="clearml project to be associated with task",
+        help="name to be either be associated with a clearML task"
+        "or used for organization on disk",
     )
-    # TODO: remove references to old repo code
     parser.add_argument(
         "--dataset_name",
         type=str,
@@ -233,7 +341,7 @@ if __name__ == "__main__":
         "--pred_metric",
         type=str,
         nargs="+",
-        help="the metric to use as a target for training",
+        help="the metric(s) to use as target(s) for training",
     )
     parser.add_argument(
         "--groups_json",
@@ -243,7 +351,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data_fraction",
         type=float,
-        help="fraction of data to train with",
+        help="fraction of data to train with, default is 1.0",
     )
     parser.add_argument(
         "--initial_weights",
@@ -260,13 +368,14 @@ if __name__ == "__main__":
         "--segments",
         type=str,
         nargs="+",
-        help="names of the 3-second subsegments to include when training",
+        help="names of the 3-second subsegments to include when training, e.g. `seg_1`",
     )
     parser.add_argument(
         # TODO: remove references to old code
         "--csv_path",
         type=str,
-        help="path pointing to the CSV that contains NISQA-style data",
+        help="path pointing to the CSV or JSON that contains data readable by"
+        "datasets found in `wawenet_trainer.lightning_data`",
     )
     parser.add_argument(
         "--data_root_path",
@@ -282,12 +391,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lightning_module_name",
         type=str,
-        help="name of the model class that implements pl.LightningModule",
+        help="name of the model class that implements pl.LightningModule,"
+        "probably `LitWAWEnet2020` for best results",
     )
     parser.add_argument(
         "--initial_learning_rate",
         type=float,
-        help="learning rate starting place",
+        help="learning rate used at the beginning of the training process",
     )
     parser.add_argument(
         "--channels",
@@ -308,11 +418,13 @@ if __name__ == "__main__":
         help="directory where experiment artifacts should be stored. defaults to "
         "`~/wenets_training_artifacts`",
     )
+    # TODO: add a config for the ICASSP 2020 paper
     parser.add_argument(
         "--training_regime",
         type=str,
         help="the specific type of model you'd like to train. options are `default`, "
-        "`multitarget_obj_2022`, `multitarget_subj_obj_2022` and `multitarget_its_2022`.",
+        "`multitarget_obj_2022`, `multitarget_subj_obj_2022` and `multitarget_its_2022`. "
+        "specifying other arguments will override the configurations defined for these regimes.",
         default="default",
     )
     parser.add_argument(
@@ -326,10 +438,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    # TODO: read configs for specific training regimes so you don't HAVE to deal with
-    #       all these params
 
-    # if args.training_regime is not specified, this will return a template dictionary
+    # if args.training_regime is not specified, this will return a default template dictionary
     train_params = training_params(args.training_regime)
 
     # override `train_params` with any arguments specified manually
