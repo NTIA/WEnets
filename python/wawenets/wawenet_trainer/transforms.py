@@ -261,6 +261,7 @@ class NormalizeSIIBGauss(NormalizeGenericTarget):
     name = "SIIBGauss"
     MIN = 0
     MAX = 750
+    tick_start_stop_step = (0, 751, 100)
 
 
 class NormalizeIUScaledMOS(NormalizeGenericTarget):

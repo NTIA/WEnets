@@ -1,10 +1,12 @@
 import json
 
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Union
 
 import torch
+import matplotlib.pyplot as plt
 import pandas as pd
 import pytorch_lightning as pl
 
@@ -112,7 +114,7 @@ class LitWAWEnetModule(pl.LightningModule):
                 params.requires_grad = False
 
     def _log_artifact_to_disk(
-        self, artifact_name: str, artifact: Union[pd.DataFrame, dict, list]
+        self, artifact_name: str, artifact: Union[pd.DataFrame, dict, list, plt.Figure]
     ):
         """
         implements rudimentary logging; writes dataframes to disk as json and
@@ -148,6 +150,10 @@ class LitWAWEnetModule(pl.LightningModule):
                 artifact = [float(item) for item in artifact]
             with open(artifact_path, "w") as json_fp:
                 json.dump(artifact, json_fp, default=str)
+        elif isinstance(artifact, plt.Figure):
+            # all figures are pdfs because all conference papers are LaTeX docs
+            artifact_path = artifact_path.parent / f"{artifact_path.stem}.pdf"
+            artifact.savefig(artifact_path, bbox_inches="tight")
         else:
             raise RuntimeError("Is your artifact generator running? better go catch it")
 
@@ -166,6 +172,41 @@ class LitWAWEnetModule(pl.LightningModule):
             self._log_artifact_to_disk(artifact_name, artifact)
             return
         self.clearml_task.upload_artifact(artifact_name, artifact)
+
+    def log_figure(self, title: str, series: str, figure: plt.Figure):
+        """
+        logs figures to the correct place, whether clearML or locally
+
+        Parameters
+        ----------
+        title : str
+            title of the plot, usually based on the target name
+        series : str
+            series associated with the plot, usually based on the dataloader name
+        figure : plt.Figure
+            figure to be stored/logged
+        """
+        if not self.clearml_task:
+            figure_name = "_".join([series, title])
+            self._log_artifact_to_disk(figure_name, figure)
+            return
+        # make the figure show up in the clearML "plots" tab
+        self.clearml_task.logger.report_matplotlib_figure(
+            title=title, series=series, figure=figure, iteration=self.global_step
+        )
+        # make the figure show up in the clearML "debug samples" tab, because
+        # from there you can actually download a version of the fig that works
+        with BytesIO() as buffer:  # til `BytesIO` has a context manager!
+            # all figures are pdfs because all conference papers are LaTeX docs
+            # TODO: does `report_media` make it possible to get the PDFs via the API?
+            figure.savefig(buffer, format="pdf", bbox_inches="tight")
+            self.clearml_task.logger.report_media(
+                f"{series}_{title}",
+                series=series,
+                stream=buffer,
+                file_extension="pdf",
+                iteration=self.global_step,
+            )
 
     def forward(self, batch: dict) -> torch.Tensor:
         """

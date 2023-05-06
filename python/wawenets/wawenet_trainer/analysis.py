@@ -1,8 +1,6 @@
-from io import BytesIO
 from typing import Dict, List, Tuple, Union
 
 import torch
-import pytorch_lightning as pl
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -432,47 +430,11 @@ class WENetsAnalysis:
         ax.spines["bottom"].set_visible(False)
         ax.spines["left"].set_visible(False)
         ax.spines["right"].set_visible(False)
+        fig.subplots_adjust(wspace=0.05)
 
-        # this feels dirty: report the matplotlib fig all the way in here
-        #
-        # commenting for now because it didn't work. it felt dirty anyway.
-        # maybe i can just return the fig and then report it from the callback.
-        #
-        plt.subplots_adjust(wspace=0.05)
-        self.pl_module.clearml_task.logger.report_matplotlib_figure(
-            title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
-        )
+        # reporting the matplotlib fig all the way in here feels a bit dirty, but
+        # right now, the tradeoff is either passing a figure back through two
+        # function returns or attaching some structure to `pl_module`, and i
+        # don't love either of those.
 
-        # fig.savefig(
-        #     f"{self.pl_module.output_uri / 'uploads'}/{self.dataloader_name}_{normalizer.name}.jpg"
-        # )
-
-        # TODO: hmm, how do we just save a plot to disk if we aren't logging
-        #       to clearML :(
-        #       seems like we can check if the task is None, and if it is,
-        #       come up with a name and just write it directly to the output_uri
-        # TODO: does `report_media` make it possible to get the PDFs via the API?
-        # TODO: why are all the graphs green? that's not right
-        # report_media
-        with BytesIO() as buffer:
-            fig.savefig(
-                buffer,
-                format="pdf",
-                bbox_inches="tight",
-            )
-            self.pl_module.clearml_task.logger.report_media(
-                f"{self.dataloader_name}_{normalizer.name}",
-                series=f"{self.dataloader_name}",
-                stream=buffer,
-                file_extension="pdf",
-                iteration=self.pl_module.global_step,
-            )
-        # # report matplotlib figure
-        # it's nice to have this for quick looking in clearML, even if the JPEG
-        # you download from clearML is blank.
-        self.pl_module.clearml_task.logger.report_matplotlib_figure(
-            f"{self.dataloader_name}_{normalizer.name}",
-            series=f"{self.dataloader_name}",
-            iteration=self.pl_module.global_step,
-            figure=fig,
-        )
+        self.pl_module.log_figure(normalizer.name, self.dataloader_name, fig)
