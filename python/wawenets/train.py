@@ -183,6 +183,11 @@ def train(
                     str(output_uri),
                 ),
             )
+            # setup a local dir for debug sample uploads, :thinking_face:
+            # upload_path = output_uri / "uploads"
+            # upload_path.mkdir(parents=True, exist_ok=True)
+            # upload_uri = f"file://{upload_path}"
+            # task.logger.set_default_upload_destination(upload_uri)
             trainer_kwargs = {}
             ptl_module_kwargs = {
                 "clearml_task": task,

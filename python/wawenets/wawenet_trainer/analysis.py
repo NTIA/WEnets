@@ -107,6 +107,21 @@ class WENetsAnalysis:
         # make a dataframe from that dictionary
         self.df = pd.DataFrame.from_dict(stacked)
 
+        # do some matplotlib init. there's got to be a better way to do this
+        SMALL_SIZE = 16
+        MEDIUM_SIZE = 18
+        BIGGER_SIZE = 20
+
+        plt.rc("font", size=SMALL_SIZE)  # controls default text sizes
+        plt.rc("axes", titlesize=22)  # fontsize of the axes title
+        plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+        plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
+        plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.rc("font", family="Times New Roman")
+        plt.rc("text", usetex=True)
+
     @staticmethod
     def _stack_field(
         test_outputs: List[dict], field_name: str
@@ -364,10 +379,6 @@ class WENetsAnalysis:
             the matplotlib colormap name to be used to provide false color
             for the 2d histogram, by default "Greys"
         """
-        # generates a 2D histogram of target value vs. predicted value.
-
-        # like a scatter plot, except you can see what's happing when there's
-        # lots of overlap.
         fig, ax = plt.subplots(dpi=300, figsize=(6, 5))
         beg, end, step = normalizer.tick_start_stop_step
         x_start, x_stop = normalizer.MIN, normalizer.MAX + 0.1
@@ -409,7 +420,7 @@ class WENetsAnalysis:
             xycoords="axes fraction",
             fontsize="large",
         )
-        # ax.axis('equal')
+        ax.axis("equal")
 
         ax.grid(zorder=-1)
         cb = fig.colorbar(hax[3], ax=ax, extend="max")
@@ -427,24 +438,41 @@ class WENetsAnalysis:
         # commenting for now because it didn't work. it felt dirty anyway.
         # maybe i can just return the fig and then report it from the callback.
         #
-        # plt.subplots_adjust(wspace=0.05)
-        # self.pl_module.clearml_task.logger.report_matplotlib_figure(
-        #     title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
-        # )
-        # plt.show()
+        plt.subplots_adjust(wspace=0.05)
+        self.pl_module.clearml_task.logger.report_matplotlib_figure(
+            title=f"{normalizer.name}", series=f"{self.dataloader_name}", figure=plt
+        )
 
-        # # fig_save_path = plot_parent
-        # # if not fig_save_path.is_dir():
-        # #     fig_save_path.mkdir(exist_ok=True)
-        # buffer = BytesIO()
         # fig.savefig(
-        #     buffer,
-        #     format="png",
-        #     bbox_inches="tight",
+        #     f"{self.pl_module.output_uri / 'uploads'}/{self.dataloader_name}_{normalizer.name}.jpg"
         # )
-        # self.pl_module.clearml_task.logger.report_media(
-        #     f"{self.dataloader_name}_{normalizer.name}",
-        #     series=f"{self.dataloader_name}",
-        #     stream=buffer,
-        #     file_extension="png",
-        # )
+
+        # TODO: hmm, how do we just save a plot to disk if we aren't logging
+        #       to clearML :(
+        #       seems like we can check if the task is None, and if it is,
+        #       come up with a name and just write it directly to the output_uri
+        # TODO: does `report_media` make it possible to get the PDFs via the API?
+        # TODO: why are all the graphs green? that's not right
+        # report_media
+        with BytesIO() as buffer:
+            fig.savefig(
+                buffer,
+                format="pdf",
+                bbox_inches="tight",
+            )
+            self.pl_module.clearml_task.logger.report_media(
+                f"{self.dataloader_name}_{normalizer.name}",
+                series=f"{self.dataloader_name}",
+                stream=buffer,
+                file_extension="pdf",
+                iteration=self.pl_module.global_step,
+            )
+        # # report matplotlib figure
+        # it's nice to have this for quick looking in clearML, even if the JPEG
+        # you download from clearML is blank.
+        self.pl_module.clearml_task.logger.report_matplotlib_figure(
+            f"{self.dataloader_name}_{normalizer.name}",
+            series=f"{self.dataloader_name}",
+            iteration=self.pl_module.global_step,
+            figure=fig,
+        )
