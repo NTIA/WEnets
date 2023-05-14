@@ -176,6 +176,9 @@ def train(
             Task.add_requirements("pandas", "1.5.2")
             Task.add_requirements("scikit-learn", "1.2.2")
             Task.add_requirements("scikit-image", "0.19.3")
+            Task.add_requirements(
+                "urllib3", "1.26.15"
+            )  # temporary until a new clearML version is released
             task = Task.init(
                 project_name=project_name,
                 task_name=task_name,

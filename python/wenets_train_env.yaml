@@ -2,6 +2,8 @@ name: wenets_train
 channels:
   - conda-forge
   - clearml
+  - pytorch
+  - nvidia
   - defaults
 dependencies:
   - python=3.10
@@ -18,10 +20,11 @@ dependencies:
   - scikit-image
   - scikit-learn
   - clearml
+  - pytorch<2.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.7
   - pip:
       - sox
-      - torch
-      - torchvision
-      - torchaudio
-      - pytorch-lightning
+      - pytorch-lightning<1.9
       - pandas
