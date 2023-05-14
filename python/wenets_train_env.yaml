@@ -25,6 +25,7 @@ dependencies:
   - torchaudio
   - pytorch-cuda=11.7
   - pip:
+      - librosa
       - sox
       - pytorch-lightning<1.9
       - pandas

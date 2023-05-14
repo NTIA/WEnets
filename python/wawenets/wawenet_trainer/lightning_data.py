@@ -9,6 +9,8 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 from pytorch_lightning import LightningDataModule
 
+from NISQA.nisqa.NISQA_lib import SpeechQualityDataset
+
 # set up datasets and the lightning data module here
 
 
@@ -420,6 +422,38 @@ class TUBDataset(Dataset):
         """
         start_sample, stop_sample = self._parse_subsegment(row, subseg, sample_rate)
         return sample[start_sample:stop_sample]
+
+
+# TODO: cleanup TUBdataset
+# TODO: are we going to release our augmented TUB CSV?
+class NISQADatasetITS(SpeechQualityDataset):
+    """a dataset suitable for loading speech segments from the TUB dataset"""
+
+    # the key where a relative path to a file can be found
+    degraded_path_key = "filename"
+    # the key that specifies the language of a speech segment
+    language_key = "sourceDatasetLanguage"
+    # the key where the speech processing impairment can be found
+    impairment = "impairment"
+
+    def __init__(
+        self,
+        nisqa_df,
+        root_dir,
+        metric: Union[str, list] = None,
+        transform: Callable = None,
+        segments: Union[List[str], str] = None,
+        match_segments: List[str] = None,
+        metadata: bool = False,
+        **kwargs,
+    ):
+        super().__init__(
+            df=nisqa_df,
+            data_dir=root_dir,
+            transform=transform,
+            mos_column=metric,
+            **kwargs,
+        )
 
 
 # TODO: clean up TUBDataModule:

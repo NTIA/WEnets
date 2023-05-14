@@ -16,6 +16,8 @@ from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
 from wawenet_trainer.log_performance import log_performance_metrics
 from wawenet_trainer.transforms import NormalizeGenericTarget
 
+from NISQA.nisqa.NISQA_lib import NISQA
+
 # set up the lightning module here
 
 
@@ -498,3 +500,40 @@ class LitWAWEnet2020(LitWAWEnetModule):
 
         # freeze some layers if you wanna do some transfer learning
         self._freeze_layers()
+
+
+class LitNISQA(LitWAWEnetModule):
+    __version__ = "1.0.0"
+
+    def __init__(
+        self,
+        learning_rate: float,
+        *args: Any,
+        weights_path: Path = None,
+        unfrozen_layers: int = None,
+        normalizers: List[NormalizeGenericTarget] = None,
+        clearml_task: Task = None,
+        task_name: str = "default_task_name",
+        scatter_color_map: str = None,
+        output_uri: str = None,
+        init_timestamp: str = "",
+        num_targets: int = None,
+        channels: int = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            learning_rate,
+            *args,
+            weights_path=weights_path,
+            unfrozen_layers=unfrozen_layers,
+            normalizers=normalizers,
+            clearml_task=clearml_task,
+            task_name=task_name,
+            scatter_color_map=scatter_color_map,
+            output_uri=output_uri,
+            init_timestamp=init_timestamp,
+            **kwargs,
+        )
+
+        # load the model
+        self.model = NISQA(cnn_model="standard")

@@ -1,0 +1,3 @@
+[submodule "python/wawenets/NISQA"]
+	path = python/wawenets/NISQA
+	url = https://github.com/gabrielmittag/NISQA.git
