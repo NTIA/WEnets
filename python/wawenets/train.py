@@ -262,7 +262,7 @@ def train(
         num_workers=num_workers,
         split_column_name=split_column_name,
     )
-    data_module.setup()
+    # data_module.setup()
 
     # grab the model class, IE LitWAWEnet2020
     lightning_module: LitWAWEnetModule = get_class(

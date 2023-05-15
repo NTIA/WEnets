@@ -91,10 +91,14 @@ class WENetsAnalysis:
         # denormalize: the predictions are still normalized to [-1, 1]. here
         #           we put them back into the target's native range.
         for index, normalizer in enumerate(pl_module.normalizers):
-            stacked[normalizer.name] = normalizer.denorm(stacked["y"][:, index])
-            stacked[f"{normalizer.name}_hat"] = normalizer.denorm(
-                stacked["y_hat"][:, index]
-            )
+
+            # stacked[normalizer.name] = normalizer.denorm(stacked["y"][:, index])
+            # stacked[f"{normalizer.name}_hat"] = normalizer.denorm(
+            #     stacked["y_hat"][:, index]
+            # )
+            # try not denormalizing and see what our losses are like
+            stacked[normalizer.name] = stacked["y"][:, index]
+            stacked[f"{normalizer.name}_hat"] = stacked["y_hat"][:, index]
         # delete y/y_hat, otherwise pandas will complain when we make a DF
         del stacked["y"]
         del stacked["y_hat"]

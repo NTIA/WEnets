@@ -107,7 +107,7 @@ training_regimes:
     split_column_name: "split"
     scatter_color_map: "Greens"
   nisqa_its_pesqmoslqo:
-    dataset_name: NISQADatasetITS
+    dataset_name: NISQAWithITSDataset
     batch_size: 60
     training_epochs: 30
     seed: 1982

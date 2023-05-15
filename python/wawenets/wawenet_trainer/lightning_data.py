@@ -424,9 +424,7 @@ class TUBDataset(Dataset):
         return sample[start_sample:stop_sample]
 
 
-# TODO: cleanup TUBdataset
-# TODO: are we going to release our augmented TUB CSV?
-class NISQADatasetITS(SpeechQualityDataset):
+class NISQAWithITSDataset(SpeechQualityDataset):
     """a dataset suitable for loading speech segments from the TUB dataset"""
 
     # the key where a relative path to a file can be found
@@ -574,6 +572,7 @@ class WEnetsDataModule(LightningDataModule):
         #       valid first sample?
 
         # load the DF
+        # TODO: order in the DF doesn't seem to be deterministic.
         df = self._read_df()
 
         # preprocess the DF, if requested
