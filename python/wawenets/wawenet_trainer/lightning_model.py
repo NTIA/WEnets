@@ -11,12 +11,12 @@ import pandas as pd
 import pytorch_lightning as pl
 
 from clearml import Task
-from python.wawenets.wawenet_trainer.transforms import NormalizeGenericTarget
 from torchaudio.prototype.pipelines import SQUIM_OBJECTIVE
+from torchvision import transforms
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
 from wawenet_trainer.log_performance import log_performance_metrics
-from wawenet_trainer.transforms import NormalizeGenericTarget
+from wawenet_trainer.transforms import NormalizeGenericTarget, get_normalizer_class
 
 # set up the lightning module here
 
@@ -515,6 +515,8 @@ class LitSQUIM(LitWAWEnetModule):
         scatter_color_map: str = None,
         output_uri: str = None,
         init_timestamp: str = "",
+        num_targets: int = 1,
+        channels: int = 96,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -530,8 +532,14 @@ class LitSQUIM(LitWAWEnetModule):
             init_timestamp=init_timestamp,
             **kwargs,
         )
+
         # load the "model"
         self.model = SQUIM_OBJECTIVE.get_model()
+
+        # normalize SQUIM predictions so all our analysis code works properly
+        self.normalizer_transforms = transforms.Compose(
+            [get_normalizer_class("PESQMOSLQO", 0), get_normalizer_class("STOI", 1)]
+        )
 
     def test_step(
         self,
@@ -567,10 +575,27 @@ class LitSQUIM(LitWAWEnetModule):
         language = batch["language"]
         impairment = batch["impairment"]
         # predict
-        stoi_hyp, pesq_hyp, si_sdr_hyp = self.model(x)
-        # TODO: need to denormalize here
-        y_hat = torch.cat([pesq_hyp, stoi_hyp])
-        super().test_step(*args, **kwargs)
+        # this model doesn't accept batches for some reason, so we're doin' it live
+        predictions = list()
+        for ind in range(x.shape[0]):
+            stoi_hyp, pesq_hyp, si_sdr_hyp = self.model(x[ind, :, :])
+            predictions.append(torch.Tensor([pesq_hyp, stoi_hyp]))
+
+        # hack: package y_hat into a dictionary so we can use
+        # self.normalizer_transforms to change SQUIM predictions into the range
+        # the rest of our code expects at this point
+
+        # this transpose converts our column vector to a row vector, which
+        # ultimately allows us to abuse our normalize transforms. they technically
+        # expect one row of a column vector because the transforms are called in
+        # parallel on all items in the batch.
+        y_hat = torch.vstack(predictions).T
+        fake_batch = {"pred_metric": y_hat}
+        fake_batch = self.normalizer_transforms(fake_batch)
+        # this transpose converts back to a column vector so we can match the
+        # dimensions of `y`
+        y_hat = fake_batch["pred_metric"].T.to(y.device)
+
         return {
             "test_step_loss": self.loss_fn(y_hat, y).detach().cpu(),
             "y": y.detach().cpu(),
