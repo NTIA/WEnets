@@ -21,6 +21,7 @@ from wawenet_trainer.transforms import (
     get_normalizer_class,
     InvertAudioPhase,
     NormalizeAudio,
+    NormalizeAudioSquim,
 )
 
 # main training script
@@ -95,6 +96,8 @@ def train(
     split_column_name: str = None,
     scatter_color_map: str = "Purples",
     logging: str = "local",
+    df_preprocessor: str = "",  # TODO: update docstrings
+    df_preprocessor_kwargs: dict = None,
     **kwargs,
 ):
     """
@@ -219,7 +222,7 @@ def train(
 
     # set up the transforms/one augmentation
     speech_transforms = [
-        NormalizeAudio(),
+        NormalizeAudioSquim(),  # xxx
         AudioToTensor(),
     ]
     speech_transforms.extend(normalizers)
@@ -233,7 +236,7 @@ def train(
     speech_transforms = transforms.Compose(speech_transforms)
     augment_transforms = transforms.Compose(augment_transforms)
 
-    transform_list = [speech_transforms, augment_transforms]
+    transform_list = [speech_transforms]  # xxx, augment_transforms]
 
     # TODO: hmmm. set up a default here?
     if not segments:
@@ -254,6 +257,12 @@ def train(
 
     # set up a ptl data module to use with training
     dataset_class = get_class(dataset_name, "wawenet_trainer.lightning_data")
+    #   get our DF preprocessor, if any
+    if df_preprocessor:
+        df_preprocessor_callable = get_class(
+            df_preprocessor, "wawenet_trainer.lightning_data"
+        )
+    df_preprocessor_kwargs = df_preprocessor_kwargs if df_preprocessor_kwargs else {}
     data_module = WEnetsDataModule(
         csv_path,
         batch_size,
@@ -266,6 +275,8 @@ def train(
         match_segments=match_segments,
         num_workers=num_workers,
         split_column_name=split_column_name,
+        df_preprocessor=df_preprocessor_callable,
+        df_preprocessor_args=df_preprocessor_kwargs,
     )
     data_module.setup()
 

@@ -29,6 +29,14 @@ If you need to cite our work, please use the following:
 In order to run the WAWEnets Python code, some initial setup is required.
 Please follow the instructions below to prepare your machine and environment.
 
+TODO: for graphs, latex is required, as is the `cm-super` package: 
+
+```shell
+apt install cm-super
+```
+
+ref: https://github.com/matplotlib/matplotlib/issues/16911
+
 ## SoX
 
 [SoX](https://sox.sourceforge.net) is an audio processing library and CLI tool useful for format conversions, padding, and trimming, among other things.

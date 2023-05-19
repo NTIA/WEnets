@@ -129,3 +129,4 @@ training_regimes:
     split_column_name: "split"
     scatter_color_map: "Greens"
     test_only: True
+    df_preprocessor: noise_only_preprocessor

@@ -12,6 +12,14 @@ from pytorch_lightning import LightningDataModule
 # set up datasets and the lightning data module here
 
 
+def noise_only_preprocessor(df: pd.DataFrame, **kwargs):
+    df = df[
+        (df["impairment"].str.contains("noise"))
+        & ~(df["impairment"].str.contains("codec"))
+    ]
+    return df
+
+
 class ITSDataset(Dataset):
     """a dataset suitable for loading speech segments used to train the models
     published in the 2020 ICASSP paper"""
