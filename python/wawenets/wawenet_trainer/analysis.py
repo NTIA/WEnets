@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from matplotlib import colors
-from sklearn.metrics import mean_absolute_error as mae
+from sklearn.metrics import mean_absolute_error as mae, mean_squared_error as mse
 
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.log_performance import (
@@ -38,6 +38,7 @@ sharing code.
 
 TODO: will need to make a mechanism for remapping group names, esp.
       for the original ITS dataset
+OR:   just clean up the names in the its dataset json
 """
 
 
@@ -194,6 +195,8 @@ class WENetsAnalysis:
         performance_record["corr"] = calculate_correlation(y, y_hat)
         # converting to tensors and then back to numpy is a little painful but this way
         # we get to use the same loss function that we used to train/test.
+        # BUT. since we don't necessarily know what `loss_fn` is, we should
+        # store RMSE separately.
         loss = (
             self.pl_module.loss_fn(
                 torch.Tensor(y),
@@ -203,6 +206,7 @@ class WENetsAnalysis:
             .item()
         )
         performance_record["loss"] = loss
+        performance_record["rmse"] = np.sqrt(mse(y, y_hat))
         performance_record["mae"] = mae(y, y_hat)
         performance_record["tavg"] = y.mean()
         performance_record["pavg"] = y_hat.mean()
@@ -253,7 +257,7 @@ class WENetsAnalysis:
                     y,
                     y_hat,
                     performance_record["corr"],
-                    performance_record["loss"],
+                    performance_record["rmse"],
                     cmap=self.pl_module.scatter_color_map,
                 )
 
@@ -341,6 +345,9 @@ class WENetsAnalysis:
                 .numpy()
                 .item()
             )
+            record["per_condition_rmse"] = np.sqrt(
+                mse(gdf["tavg"].to_numpy(), gdf["tavg"].to_numpy())
+            )
             per_condition_metrics.append(record)
         per_condition_df = pd.DataFrame(per_condition_metrics)
         return per_condition_df
@@ -351,7 +358,7 @@ class WENetsAnalysis:
         y: np.ndarray,
         y_hat: np.ndarray,
         correlation: float,
-        loss: float,
+        rmse: float,
         cmap: str = "Greys",
     ):
         """
@@ -413,7 +420,7 @@ class WENetsAnalysis:
             fontsize="large",
         )
         ax.annotate(
-            r"$\textrm{RMSE}=" + f"{loss:.3f}" + r"$",
+            r"$\textrm{RMSE}=" + f"{rmse:.3f}" + r"$",
             xy=(0.520, 0.12),
             xycoords="axes fraction",
             fontsize="large",

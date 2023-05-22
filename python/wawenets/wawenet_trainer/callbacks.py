@@ -187,7 +187,7 @@ class WAWEnetCallbacks(pl.Callback):
 
             # kitchen sink—for the inevitable "what if we slice the data this
             # way?" question
-            pl_module.log_artifact(f"{dataloader_name}_all_data", analyzer.df)
+            pl_module.log_artifact(f"{dataloader_name}_all_data_df", analyzer.df)
 
         # some stuff that i think we can get from scalars
         # TODO: can we get this data out of the clearML scalars?
