@@ -262,6 +262,8 @@ def train(
         df_preprocessor_callable = get_class(
             df_preprocessor, "wawenet_trainer.lightning_data"
         )
+    else:
+        df_preprocessor_callable = None
     df_preprocessor_kwargs = df_preprocessor_kwargs if df_preprocessor_kwargs else {}
     data_module = WEnetsDataModule(
         csv_path,
