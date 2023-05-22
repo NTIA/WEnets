@@ -1,0 +1,31 @@
+name: wenets_squim_eval
+channels:
+  - conda-forge
+  - clearml
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  - python=3.10
+  - black
+  - pylint
+  - tqdm
+  - pyyaml
+  - click
+  - matplotlib
+  - pip
+  - poetry
+  - pytest
+  - scipy
+  - scikit-image
+  - scikit-learn
+  - clearml
+  - pip:
+      - --pre
+      - --extra-index-url https://download.pytorch.org/whl/nightly/cu118
+      - sox==1.4.1
+      - torch==2.1.0.dev20230516+cu118
+      - torchvision
+      - torchaudio==2.1.0.dev20230516+cu118
+      - pytorch-lightning<1.9
+      - pandas==1.5.3
