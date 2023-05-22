@@ -20,12 +20,11 @@ dependencies:
   - scikit-image
   - scikit-learn
   - clearml
+  - pytorch<2.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.7
   - pip:
-      - --pre
-      - --extra-index-url https://download.pytorch.org/whl/nightly/cu118
-      - sox==1.4.1
-      - torch==2.1.0.dev20230516+cu118
-      - torchvision
-      - torchaudio==2.1.0.dev20230516+cu118
+      - sox
       - pytorch-lightning<1.9
-      - pandas==1.5.3
+      - pandas
