@@ -382,7 +382,12 @@ class NormalizeAudio:
 
 
 class NormalizeAudioSquim:
-    """Normalize numpy audio arrays to the range (-1, 1)."""
+    """Normalize numpy audio arrays to the range (-1, 1).
+
+    this transform was used to experimentally learn whether the SQUIM objective
+    model was sensitive to normalization levels. we found that results were roughly
+    equivalent regardless of level normalization.
+    """
 
     def __call__(self, sample: dict) -> dict:
         """
@@ -472,8 +477,8 @@ def get_normalizer_class(
         "STOI": NormalizeSTOI,
         "ESTOI": NormalizeESTOI,
         "SIIBGauss": NormalizeSIIBGauss,
-        "IUScaledMOS": NormalizeIUScaledMOS,
-        "IUMOS": NormalizeIUMOS,
+        "ScaledMOS": NormalizeIUScaledMOS,
+        "MOS": NormalizeIUMOS,
     }
     instance = normalizer_map[target](
         target_column_ind=target_column_ind, target_key=target_key

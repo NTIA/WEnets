@@ -222,7 +222,8 @@ def train(
 
     # set up the transforms/one augmentation
     speech_transforms = [
-        NormalizeAudioSquim(),  # xxx
+        NormalizeAudio(),
+        # TODO: we need to get transforms into the config
         AudioToTensor(),
     ]
     speech_transforms.extend(normalizers)
