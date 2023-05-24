@@ -77,7 +77,8 @@ class WAWEnetCallbacks(pl.Callback):
 
         pl_module : LitWAWEnetModule
         """
-        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
+        # the following provide a way to access a history of val epoch losses. these
+        # could also be accessed via the clearML API if desired.
         self.epoch_losses["validation"].append(pl_module.val_epoch_performance["loss"])
         self.epoch_correlations["validation"].append(
             pl_module.val_epoch_performance["correlations"]
@@ -129,7 +130,8 @@ class WAWEnetCallbacks(pl.Callback):
         performance_metrics = log_performance_metrics(
             pl_module.training_step_outputs, pl_module, "training epoch"
         )
-        # TODO: do i need the next two lines? i think this is a leftover from a less civilized time
+        # the following provide a way to access a history of train epoch losses. these
+        # could also be accessed via the clearML API if desired.
         self.epoch_losses["training"].append(performance_metrics["loss"])
         self.epoch_correlations["training"].append(performance_metrics["correlations"])
         pl_module.train_step_outputs = None
@@ -189,8 +191,8 @@ class WAWEnetCallbacks(pl.Callback):
             # way?" question
             pl_module.log_artifact(f"{dataloader_name}_all_data_df", analyzer.df)
 
-        # some stuff that i think we can get from scalars
-        # TODO: can we get this data out of the clearML scalars?
+        # the following provide a way to access a history of val and training epoch losses. these
+        # could also be accessed via the clearML API if desired.
         pl_module.log_artifact("training_corr", self.epoch_correlations["training"])
         pl_module.log_artifact("training_loss", self.epoch_losses["training"])
         pl_module.log_artifact("validation_corr", self.epoch_correlations["validation"])

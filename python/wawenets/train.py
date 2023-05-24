@@ -85,7 +85,7 @@ def train(
     data_fraction: float = None,
     initial_weights: str = None,
     unfrozen_layers: int = None,
-    segments: List[str] = "",
+    segments: List[str] = ["seg_1"],
     csv_path: str = "",
     data_root_path: str = "",
     test_only: bool = False,
@@ -133,7 +133,7 @@ def train(
         counting back from the output of the model, by default None
     segments : List[str], optional
         names of the 3-second subsegments to include when training, e.g. `seg_1`,
-        by default ""
+        by default ["seg_1"]
     csv_path : str, optional
         path pointing to the CSV or JSON that contains data readable by
         datasets found in `wawenet_trainer.lightning_data`, by default ""
@@ -241,10 +241,6 @@ def train(
     augment_transforms = transforms.Compose(augment_transforms)
 
     transform_list = [speech_transforms]  # xxx, augment_transforms]
-
-    # TODO: hmmm. set up a default here?
-    if not segments:
-        segments = ["seg_1"]
 
     # TODO: next two items are a bit of a mess tbh. i'm not sure this is the right
     # place for what is essentially configuration
@@ -396,7 +392,6 @@ if __name__ == "__main__":
         help="names of the 3-second subsegments to include when training, e.g. `seg_1`",
     )
     parser.add_argument(
-        # TODO: remove references to old code
         "--csv_path",
         type=str,
         help="path pointing to the CSV or JSON that contains data readable by"
@@ -443,7 +438,6 @@ if __name__ == "__main__":
         help="directory where experiment artifacts should be stored. defaults to "
         "`~/wenets_training_artifacts`",
     )
-    # TODO: add a config for the ICASSP 2020 paper
     parser.add_argument(
         "--training_regime",
         type=str,

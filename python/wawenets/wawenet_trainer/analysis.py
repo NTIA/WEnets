@@ -36,9 +36,7 @@ we can think of this as a list of records from which we can make a dataframe. th
 we can use `df.groupby` to handle per-condition and per-language calculations while
 sharing code.
 
-TODO: will need to make a mechanism for remapping group names, esp.
-      for the original ITS dataset
-OR:   just clean up the names in the its dataset json
+TODO: clean up the names in the its dataset json
 """
 
 
