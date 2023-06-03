@@ -1,0 +1,35 @@
+name: wenets_wav2vec
+channels:
+  - conda-forge
+  - clearml
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  - python=3.10
+  - black
+  - pylint
+  - tqdm
+  - pyyaml
+  - click
+  - matplotlib
+  - pip
+  - poetry
+  - pytest
+  # pinned to handle
+  #  ImportError: /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found
+  # on ubuntu 18.04. should probably be removed in the future
+  - scipy<1.8
+  - scikit-image
+  - scikit-learn
+  - clearml
+  - pip:
+      - --pre
+      - --extra-index-url https://download.pytorch.org/whl/nightly/cu118
+      - sox==1.4.1
+      - torch==2.1.0.dev20230516+cu118
+      - torchvision
+      - torchaudio==2.1.0.dev20230516+cu118
+      - pytorch-lightning<1.9
+      - pandas==1.5.3
+      - "--editable=git+https://github.com/pytorch/fairseq#egg=fairseq"
