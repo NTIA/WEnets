@@ -39,7 +39,7 @@ class Wav2VecRef(nn.Module):
                 )  # need to handle out and err somehow, looks like everything gets shoved into err :/
 
         model, config, task = fairseq.checkpoint_utils.load_model_ensemble_and_task(
-            [self.weights_path]
+            [str(self.weights_path)]
         )
         self.model = model[0]
         self.model.remove_pretraining_modules()
