@@ -15,6 +15,38 @@ from wawenets import get_stl_path
 from wawenets.generic_logger import construct_logger
 
 
+def call_command(command: list, shell=False) -> tuple:
+    """Calls external command and returns stdout and stderr results.
+
+    Parameters
+    ----------
+    command : iterable
+        An iterable containing the individual, space-delimited
+        subcommands within a given call_command command. In other words,
+        a call to `call_command_util --arg1 val1 --arg2 val2` would
+        be represented as::
+        ['call_command_util', '--arg1', 'val1', '--arg2', 'val2']
+
+    shell : bool, optional
+        Must be true if command is a built-in shell command on Windows,
+        by default False
+
+    Returns
+    -------
+    tuple
+        a tuple containing `stderr` and `stdout` results of the call
+    """
+    if sys.platform != "win32":
+        shell = False  # ensure shell is false everywhere but windows
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=shell,
+    )
+    return process.communicate()
+
+
 class SoxConverter:
     """
     wrapper around the pysox API that performs some specific operations that
@@ -377,38 +409,6 @@ class Processor:
     """
 
     @staticmethod
-    def _call_command(command: list, shell=False) -> tuple:
-        """Calls external command and returns stdout and stderr results.
-
-        Parameters
-        ----------
-        command : iterable
-            An iterable containing the individual, space-delimited
-            subcommands within a given cli command. In other words,
-            a call to `cli_util --arg1 val1 --arg2 val2` would
-            be represented as::
-            ['cli_util', '--arg1', 'val1', '--arg2', 'val2']
-
-        shell : bool, optional
-            Must be true if command is a built-in shell command on Windows,
-            by default False
-
-        Returns
-        -------
-        tuple
-            a tuple containing `stderr` and `stdout` results of the call
-        """
-        if sys.platform != "win32":
-            shell = False  # ensure shell is false everywhere but windows
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=shell,
-        )
-        return process.communicate()
-
-    @staticmethod
     def _calculate_filesize_ratio(in_path: Path, out_path: Path) -> float:
         """
         calculates the ratio of the size of the input file to the size of the output
@@ -578,7 +578,7 @@ class Resampler(Processor):
             ratio, and by proxy indicating if resampling was successful
         """
         # `filter` puts all of its output in `stderr`, hmm
-        stdout, stderr = self._call_command(command)
+        stdout, stderr = call_command(command)
 
         # because we can't naively check `stderr`, let's naively calculate size ratio
         return self._check_filesize_ratio(in_path, out_path, target_ratio)
@@ -982,7 +982,7 @@ class LevelMeter(Processor):
             ]
         )
         # actually call the CLI
-        stdout, stderr = self._call_command(command)
+        stdout, stderr = call_command(command)
         if stderr:
             raise RuntimeError(f"uuhhh: {stderr}")
         # parse the result and return the items we're interested in
@@ -1062,7 +1062,7 @@ class SpeechNormalizer(Processor):
         ]
 
         # `filter` puts all of its output in `stderr`
-        stdout, stderr = self._call_command(command)
+        stdout, stderr = call_command(command)
 
         # because we can't naively check `stderr`, let's naively calculate size ratio
         return self._check_filesize_ratio(in_path, out_path, target_ratio)

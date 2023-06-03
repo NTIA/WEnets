@@ -15,6 +15,7 @@ from torchaudio.prototype.pipelines import SQUIM_OBJECTIVE, SQUIM_SUBJECTIVE
 from torchvision import transforms
 
 from wawenets.model import WAWEnetICASSP2020, WAWEnet2020
+from wawenets.reference_models import Wav2VecRef
 from wawenet_trainer.log_performance import log_performance_metrics
 from wawenet_trainer.transforms import NormalizeGenericTarget, get_normalizer_class
 
@@ -708,6 +709,7 @@ class LitSQUIMSubjIU(LitWAWEnetModule):
             "language": language,
             "impairment": impairment,
         }
+
 
 class LitSQUIMSubjNISQA(LitWAWEnetModule):
     def __init__(

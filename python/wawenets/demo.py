@@ -1,37 +1,7 @@
 import subprocess
 import sys
 
-
-def call_command(command: list, shell=False) -> tuple:
-    """Calls external command and returns stdout and stderr results.
-
-    Parameters
-    ----------
-    command : iterable
-        An iterable containing the individual, space-delimited
-        subcommands within a given call_command command. In other words,
-        a call to `call_command_util --arg1 val1 --arg2 val2` would
-        be represented as::
-        ['call_command_util', '--arg1', 'val1', '--arg2', 'val2']
-
-    shell : bool, optional
-        Must be true if command is a built-in shell command on Windows,
-        by default False
-
-    Returns
-    -------
-    tuple
-        a tuple containing `stderr` and `stdout` results of the call
-    """
-    if sys.platform != "win32":
-        shell = False  # ensure shell is false everywhere but windows
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=shell,
-    )
-    return process.communicate()
+from wawenets.stl_wrapper import call_command
 
 
 print(
