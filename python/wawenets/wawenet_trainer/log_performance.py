@@ -38,7 +38,7 @@ def log_performance_metrics(
         y = outputs["y"]
         y_hat = outputs["y_hat"]
     loss = pl_module.loss_fn(y_hat, y)
-    pl_module.log(f"{phase} loss", loss)
+    pl_module.log(f"{phase} loss".replace(" ", "_"), loss)
     correlations = _log_correlations(y, y_hat, pl_module, phase)
     return {"loss": loss, "correlations": correlations}
 
@@ -100,9 +100,11 @@ def _log_correlations(
         pearson_r = calculate_correlation(y[:, ind], y_hat[:, ind])
         correlations[normalizer.name] = pearson_r
         if "batch" in phase:
-            pl_module.log(f"{phase} correlation: {normalizer.name}", pearson_r)
+            pl_module.log(
+                f"{phase} correlation {normalizer.name}".replace(" ", "_"), pearson_r
+            )
         all_pearson_r = np.hstack((all_pearson_r, pearson_r))
     mean_pearsor_r = all_pearson_r.mean()
-    pl_module.log(f"{phase} correlation", mean_pearsor_r)
+    pl_module.log(f"{phase} correlation".replace(" ", "_"), mean_pearsor_r)
     correlations["mean"] = mean_pearsor_r
     return correlations

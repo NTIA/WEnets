@@ -254,7 +254,7 @@ class LitWAWEnetModule(pl.LightningModule):
         # now log to clearml
         # if we do `Task.init` correctly, this will send tensorboard-like logging
         # directly to clearML
-        self.log("training batch loss", loss)
+        self.log("training batch loss".replace(" ", "_"), loss)
         return {
             "loss": loss,
             "y": y.detach().cpu(),
@@ -300,7 +300,7 @@ class LitWAWEnetModule(pl.LightningModule):
         y = batch["pred_metric"]
         y_hat = self.model(x)
         step_loss = self.loss_fn(y_hat, y)
-        self.log("validation batch loss", step_loss)
+        self.log("validation batch loss".replace("_", " "), step_loss)
         return {
             "val_batch_loss": step_loss,
             "y": y.detach().cpu(),
@@ -416,7 +416,7 @@ class LitWAWEnetModule(pl.LightningModule):
                 optimizer, **scheduler_kwargs
             ),
             # the key for this monitor has to be `self.log` somewhere
-            "monitor": "validation epoch loss",
+            "monitor": "validation_epoch_loss",
         }
         return [optimizer], [lr_scheduler]
 
@@ -816,3 +816,37 @@ class LitSQUIMSubjNISQA(LitWAWEnetModule):
             "language": language,
             "impairment": impairment,
         }
+
+
+class LitWav2Vec(LitWAWEnetModule):
+    """
+    implements a LitWAWEnetModule where the model the fairseq wav2vec small model
+    is used to extract some features and then regress some quality values
+    """
+
+    __version__ = "1.0.0"
+
+    def __init__(
+        self,
+        learning_rate: float,
+        *args: Any,
+        num_targets: int = 1,
+        channels: int = 96,
+        **kwargs: Any,
+    ) -> None:
+        """
+        initializes LitWAWEnet
+
+        Parameters
+        ----------
+        learning_rate : float
+            the learning rate to be used when training begins
+        num_targets : int, optional
+            the number of targets this model should be trained to predict, by default 1
+        channels : int, optional
+            number of convolutional channels used to generate features, by default 96
+        """
+        super().__init__(learning_rate, *args, **kwargs)
+
+        # load the model
+        self.model = Wav2VecRef(num_targets=num_targets)

@@ -1,20 +1,24 @@
+import logging
 from typing import Dict, List, Tuple, Union
-
-import torch
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+import torch
 from matplotlib import colors
-from sklearn.metrics import mean_absolute_error as mae, mean_squared_error as mse
-
+from sklearn.metrics import mean_absolute_error as mae
+from sklearn.metrics import mean_squared_error as mse
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.log_performance import (
     calculate_correlation,
     log_performance_metrics,
 )
 from wawenet_trainer.transforms import NormalizeGenericTarget
+
+# i think fairseq sets the level to debug which somehow infects all other loggers
+# and makes matplotlib go wild when doing TeX stuff, and PIL complain about PNG stuff
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
 
 """do all the test data post processing here.
 

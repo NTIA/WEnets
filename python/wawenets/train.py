@@ -1,28 +1,26 @@
 import argparse
 import importlib
-
+import logging
 from pathlib import Path
 from typing import Any, List, Tuple, Union
 
-from clearml import Task
-
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor
+from clearml import Task
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import Dataset
 from torchvision import transforms
-
 from wawenet_trainer.callbacks import WAWEnetCallbacks
 from wawenet_trainer.lightning_data import WEnetsDataModule
 from wawenet_trainer.lightning_model import LitWAWEnetModule
 from wawenet_trainer.training_config import clearml_config_exists, training_params
 from wawenet_trainer.transforms import (
     AudioToTensor,
-    get_normalizer_class,
     InvertAudioPhase,
     NormalizeAudio,
     NormalizeAudioSquim,
     RightPadSampleTensor,
+    get_normalizer_class,
 )
 
 # main training script
@@ -301,6 +299,7 @@ def train(
     # setup callbacks
     callbacks = [
         LearningRateMonitor(logging_interval="epoch"),
+        ModelCheckpoint(every_n_epochs=10),
         WAWEnetCallbacks(),
     ]
 
@@ -455,7 +454,9 @@ if __name__ == "__main__":
         "in an attempt to prevent inadvertent data leaks.",
         default="local",
     )
-
+    # i think fairseq sets the level to debug which makes matplotlib go wild when
+    # doing TeX stuff
+    logging.basicConfig(level=logging.WARNING)
     args = parser.parse_args()
 
     # if args.training_regime is not specified, this will return a default template dictionary

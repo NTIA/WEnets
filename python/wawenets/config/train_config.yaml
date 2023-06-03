@@ -203,3 +203,31 @@ training_regimes:
     scatter_color_map: "Greens"
     test_only: True
     # df_preprocessor: noise_only_preprocessor
+  wav2vec-its:
+    project_name: TestWav2Vec
+    dataset_name: ITSDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+      - POLQAMOSLQO
+      - PEMO
+      - ViSQOL3_c310
+      - STOI
+      - ESTOI
+      - SIIBGauss
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWav2Vec
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 8
+    split_column_name: "split"
+    scatter_color_map: "Greens"
