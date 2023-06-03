@@ -22,6 +22,7 @@ from wawenet_trainer.transforms import (
     InvertAudioPhase,
     NormalizeAudio,
     NormalizeAudioSquim,
+    RightPadSampleTensor,
 )
 
 # main training script
@@ -225,12 +226,14 @@ def train(
         NormalizeAudio(),
         # TODO: we need to get transforms into the config
         AudioToTensor(),
+        RightPadSampleTensor(48000),
     ]
     speech_transforms.extend(normalizers)
     augment_transforms = [
         NormalizeAudio(),
         InvertAudioPhase(),
         AudioToTensor(),
+        RightPadSampleTensor(48000),
     ]
     augment_transforms.extend(normalizers)
 

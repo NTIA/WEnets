@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from scipy.io import wavfile
 
+import torchaudio
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 from pytorch_lightning import LightningDataModule
@@ -428,6 +429,37 @@ class TUBDataset(Dataset):
         """
         start_sample, stop_sample = self._parse_subsegment(row, subseg, sample_rate)
         return sample[start_sample:stop_sample]
+
+
+class TUBNMRDataset(TUBDataset):
+    def __init__(
+        self,
+        tub_df,
+        root_dir,
+        metric: str | list = None,
+        transform: Callable[..., Any] = None,
+        segments: List[str] | str = None,
+        match_segments: List[str] = None,
+        metadata: bool = False,
+    ):
+        super().__init__(
+            tub_df, root_dir, metric, transform, segments, match_segments, metadata
+        )
+        # load non matching reference
+        # IU clean wav path
+        iu_nmr_path = (
+            Path("/ml_data/Speech/MOS_Quality_INTERSPEECH_2020_norm")
+            / "16k_speech"
+            / "sid0631-clean-COSINE-1278-F_close_227.wav"
+        )
+        # ITS clean wav path
+        its_nmr_path = Path(root_dir) / "" / ""
+        self.nmr, _ = torchaudio.load(str(iu_nmr_path))
+
+    def __getitem__(self, index: int) -> dict:
+        sample = super().__getitem__(index)
+        sample["nmr"] = self.nmr
+        return sample
 
 
 # TODO: clean up TUBDataModule:
