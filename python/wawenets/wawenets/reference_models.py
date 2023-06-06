@@ -15,6 +15,7 @@ class Wav2VecRef(nn.Module):
         weights_path: str = None,
         wav2vec_features: int = 768,
         num_targets: int = 1,
+        train_all: bool = False,
         *args,
         **kwargs
     ) -> None:
@@ -44,8 +45,9 @@ class Wav2VecRef(nn.Module):
         self.model = model[0]
         self.model.remove_pretraining_modules()
         # only train the linear layer
-        for params in self.model.parameters():
-            params.requires_grad = False
+        if not train_all:
+            for params in self.model.parameters():
+                params.requires_grad = False
         self.mapper = nn.Linear(wav2vec_features, num_targets)
 
     def forward(self, x: torch.Tensor):
