@@ -299,7 +299,7 @@ def train(
     # setup callbacks
     callbacks = [
         LearningRateMonitor(logging_interval="epoch"),
-        ModelCheckpoint(every_n_epochs=10),
+        ModelCheckpoint(save_top_k=2, monitor="validation_batch_loss"),
         WAWEnetCallbacks(),
     ]
 

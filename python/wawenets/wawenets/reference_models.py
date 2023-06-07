@@ -44,8 +44,8 @@ class Wav2VecRef(nn.Module):
         self.model = model[0]
         self.model.remove_pretraining_modules()
         # only train the linear layer
-        for params in self.model.parameters():
-            params.requires_grad = False
+        # for params in self.model.parameters():
+        #     params.requires_grad = False
         self.mapper = nn.Linear(wav2vec_features, num_targets)
 
     def forward(self, x: torch.Tensor):

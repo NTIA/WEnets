@@ -300,7 +300,7 @@ class LitWAWEnetModule(pl.LightningModule):
         y = batch["pred_metric"]
         y_hat = self.model(x)
         step_loss = self.loss_fn(y_hat, y)
-        self.log("validation batch loss".replace("_", " "), step_loss)
+        self.log("validation batch loss".replace(" ", "_"), step_loss)
         return {
             "val_batch_loss": step_loss,
             "y": y.detach().cpu(),

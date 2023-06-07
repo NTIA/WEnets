@@ -206,7 +206,7 @@ training_regimes:
   wav2vec-its:
     project_name: TestWav2Vec
     dataset_name: ITSDataset
-    batch_size: 60
+    batch_size: 20
     training_epochs: 30
     seed: 1982
     pred_metric:
