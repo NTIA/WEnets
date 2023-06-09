@@ -1,0 +1,133 @@
+training_regimes:
+  default:
+    dataset_name: TUBDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+      - POLQAMOSLQO
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnet2020
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 0
+    split_column_name: "db"
+    scatter_color_map: "Purples"
+  icassp_2020:
+    dataset_name: ITSDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnetICASSP20202
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 0
+    split_column_name: "split"
+    scatter_color_map: "Greys"
+  multitarget_obj_2022:
+    dataset_name:
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+      - POLQAMOSLQO
+      - PEMO
+      - VISQOL
+      - STOI
+      - ESTOI
+      - SIIBGAUS
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnet2020
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 0
+    split_column_name: "db"
+    scatter_color_map: "Purples"
+  multitarget_subj_obj_2022:
+    dataset_name: TUBDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - mos
+      - noi
+      - col
+      - dis
+      - PESQMOSLQO
+      - POLQAMOSLQO
+      - PEMO
+      - ViSQOL3_c310
+      - STOI
+      - ESTOI
+      - SIIBGauss
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+      - seg_1
+      - seg_2
+      - seg_3
+      - seg_4
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnet2020
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 0
+    split_column_name: "db"
+    scatter_color_map: "Greys"
+  multitarget_its_2022:
+    dataset_name: ITSDataset
+    batch_size: 60
+    training_epochs: 30
+    seed: 1982
+    pred_metric:
+      - PESQMOSLQO
+      - POLQAMOSLQO
+      - PEMO
+      - ViSQOL3_c310
+      - STOI
+      - ESTOI
+      - SIIBGauss
+    groups_json:
+    data_fraction:
+    initial_weights:
+    unfrozen_layers:
+    segments:
+    csv_path:
+    data_root_path:
+    test_only:
+    lightning_module_name: LitWAWEnet2020
+    initial_learning_rate: 0.0001
+    channels: 96
+    num_workers: 0
+    split_column_name: "split"
+    scatter_color_map: "Greens"

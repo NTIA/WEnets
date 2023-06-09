@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "wawenets"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Andrew Catellier <acatellier@ntia.doc.gov>"]
 include = [
@@ -12,6 +12,7 @@ include = [
     "weights/mos_noi_col_dis_PESQMOSLQO_POLQAMOSLQO_PEMO_ViSQOL3_C310_STOI_ESTOI_SIIBGauss_5dd8fccf49a84289b9260524ac38ccbe.pt",
     "speech/T000093_Q446_D401.wav",
     "config/log_config.yaml",
+    "config/train_config.yaml",
 ]
 
 [build-system]
