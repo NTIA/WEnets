@@ -12,14 +12,13 @@ from pytorch_lightning import LightningDataModule
 # set up datasets and the lightning data module here
 
 
-class ITSDataset(Dataset):
-    """a dataset suitable for loading speech segments used to train the models
-    published in the 2020 ICASSP paper"""
+class GenericDataset(Dataset):
+    """a dataset suitable for loading speech segments used to train models"""
 
     # the key where a relative path to a file can be found
     degraded_path_key = "filename"
     # the key that specifies the language of a speech segment
-    language_key = "sourceDatasetLanguage"
+    language_key = "datasetLanguage"
     # the key where the speech processing impairment can be found
     impairment = "impairment"
 
@@ -38,10 +37,9 @@ class ITSDataset(Dataset):
         Parameters
         ----------
         its_df : pd.DataFrame
-            a dataframe containing records in the style used to train models published
-            in the 2020 ICASSP paper
+            a dataframe containing records in the style documented in README.md
         root_dir : str
-            parent directory containing directories for all sub datasets (300, 301, etc.)
+            parent directory containing speech files
         metric : Union[str, list], optional
             the metric or metrics that should be used as targets, by default None
         transform : Callable, optional
@@ -101,6 +99,69 @@ class ITSDataset(Dataset):
             sample = self.transform(sample)
 
         return sample
+
+    def _get_sample_filepath(self, row: pd.Series) -> Path:
+        """
+        constructs a Path object given a row from a dataframe
+
+        Parameters
+        ----------
+        row : pd.Series
+            a row that's been selected from `self.df`
+
+        Returns
+        -------
+        Path
+            path to the file described in `row`
+        """
+        filename = row[self.degraded_path_key]
+        return self.root_dir / filename
+
+
+class ITSDataset(GenericDataset):
+    """a dataset suitable for loading speech segments used to train the models
+    published in the 2020 ICASSP paper"""
+
+    # the key where a relative path to a file can be found
+    degraded_path_key = "filename"
+    # the key that specifies the language of a speech segment
+    language_key = "sourceDatasetLanguage"
+    # the key where the speech processing impairment can be found
+    impairment = "impairment"
+
+    def __init__(
+        self,
+        its_df: pd.DataFrame,
+        root_dir: str,
+        metric: Union[str, list] = None,
+        transform: Callable = None,
+        metadata: bool = False,
+        **kwargs,
+    ):
+        """
+        initializes ITSDataset
+
+        Parameters
+        ----------
+        its_df : pd.DataFrame
+            a dataframe containing records in the style used to train models published
+            in the 2020 ICASSP paper
+        root_dir : str
+            parent directory containing directories for all sub datasets (300, 301, etc.)
+        metric : Union[str, list], optional
+            the metric or metrics that should be used as targets, by default None
+        transform : Callable, optional
+            to be applied to input data or metadata, by default None
+        metadata : bool, optional
+            whether or not to send metadata along—for training we can save memory
+            by not attaching metadata to every sample, but for testing we can do
+            more sophisticated analysis by utilizing metadata, by default False
+        """
+        self.df = its_df
+        self.root_dir = Path(root_dir)
+        self.metric = metric
+        self.transform = transform
+        self.metadata = metadata
 
     def _get_ds_dir(self, filename: str) -> str:
         """
