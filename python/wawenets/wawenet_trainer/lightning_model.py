@@ -50,8 +50,7 @@ class LitWAWEnetModule(pl.LightningModule):
         unfrozen_layers : int, optional
             the number of layers to train, starting from model output and
             working backwards. in this case "layers" means individual network
-            components, not sections of the WAWEnet. TODO: doublecheck this
-            statement, by default None
+            components, not sections of the WAWEnet.
         normalizers : List[NormalizeGenericTarget], optional
             contains target-specific normalizers in the order they will be
             delivered by `WEnetsDataModule`. these are primarily used by
