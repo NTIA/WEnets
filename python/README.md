@@ -1,4 +1,4 @@
-# WAWEnets Python code
+# WAWEnets Python Inference and Training Code
 
 Implements Wideband Audio Waveform Evaluation networks or WAWEnets.
 
@@ -24,7 +24,7 @@ If you need to cite our work, please use the following:
 }
 ```
 
-# Setup
+# Inference Setup
 
 In order to run the WAWEnets Python code, some initial setup is required.
 Please follow the instructions below to prepare your machine and environment.
@@ -180,6 +180,61 @@ where:
 
 Internally, `pandas` is used to generate the text output.
 If the `-o` option is specified, `pandas` generates a CSV and writes it to the given file path.
+
+# Training Setup
+
+Inside `wawenets/wawenet_trainer` you will find code that will train WAWEnets. Unfortunately, we are not able to share any data to train on, but you can easily build your own dataset and use this code to train a WAWEnet custom for your application.
+
+## Audio Data
+
+WAWEnets accept `.wav` files with a sample rate of 16,000 samples/second and are exactly 3 seconds long. Put your `.wav` files in a specific location, and use that location for the `train.py` argument `--data_root_path`.
+
+## Audio Metadata/Target Definition
+
+The training code will read either `pandas` dataframe-style JSON files or CSVs. These dataframes should have the following columns:
+- `filename`: the name of the file described by this row
+- `split`: either `TRAIN`, `TEST`, `VAL`, or `UNSEEN`. For which part of the training process should this file be used?
+- `impairment`: what speech processing impairment does this file exhibit?
+- `datasetLanguage`: what language are the talkers in this dataset speaking?
+- `[TARGET_NAME]`: include any target values you'd like to imitate
+- `[FILE_METADATA]`: (optional) any metadata you'd like to perhaps act on later
+Any dataframe in this format can be used as the argument `--csv_path`.
+
+## Python Conda Environment
+
+One way to install the Python libraries required to run the Python version of WAWENets is using [Anaconda](https://www.anaconda.com/products/distribution) (or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)). 
+Once Anaconda or Miniconda are installed, use the following commands to set up and activate a new conda env:
+
+```shell
+conda env create -f wenets_train_env.yaml
+conda activate wenets_train
+```
+
+After the Anaconda environment has been created and activated, execute the following code to install and test the `wawenets` package:
+
+```shell
+cd wawenets
+poetry install
+```
+
+## Training
+
+The training entrypoint is `train.py`. It has extensive options all exposed to the command line via arguments:
+
+```shell
+python train.py [ARGS]
+```
+
+There are preset configurations that will define most of these options for you. Using `generic_regime` for the `--training_regime` argument is a good start.
+
+Train your net!
+
+```shell
+python train.py --training_regime generic_regime --csv_path /path/to/csv --data_root_path /path/to/data
+```
+
+By default, results will be logged to `~/wenets_training_artifacts` and they will include dataframe result summaries as well as 2D-histograms showing predictions vs. actual values.
+
 
 -------------------------------------
 <b id="f1">1</b> Andrew A. Catellier & Stephen D. Voran, "WAWEnets: A No-Reference Convolutional Waveform-Based Approach to Estimating Narrowband and Wideband Speech Quality," ICASSP 2020 - 2020 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Barcelona, Spain, 2020, pp. 331-335. [↩](#wawenets)
